@@ -119,6 +119,9 @@ pub fn run_with_threads<F: Future>(future: F, threads: usize) {
 //     server::Server::new(f, 8)
 // }
 
-// pub fn with_state_cfg<F: traits::SharedState>(f: F, cfg: impl FnOnce() -> ServerCfg) -> Server<F> {
-//     server::Server::new(f, 8)
-// }
+pub trait SharedState: Send + Sync + 'static {}
+
+pub fn with_state_cfg<F: SharedState>(f: F, cfg: impl FnOnce() -> ()) -> Server<F> {
+    todo!()
+    // server::Server::new(f, 8)
+}
