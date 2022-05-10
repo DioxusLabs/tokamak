@@ -1,4 +1,5 @@
-fn main() {
+#[tokio::main]
+async fn main() {
     app.at("/").get(|req| async move {
         //
         req.respond().body("asd").send()

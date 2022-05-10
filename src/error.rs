@@ -1,126 +1,91 @@
-use async_trait::async_trait;
-use std::convert::Infallible;
+use crate::{Responder, Response, Result};
+use hyper::StatusCode;
 use std::error::Error as StdError;
-use std::fmt;
+use std::fmt::Formatter;
 
-use crate::{Depot, Request, Response, Writer};
-
-type BoxError = Box<dyn std::error::Error + Send + Sync>;
-
-/// Errors that can happen inside salvo.
-pub struct Error {
-    inner: BoxError,
+/// Error type expected to be returned by endpoints.
+///
+/// It can represent an HTTP level error which is useful for helper functions
+/// that wish to cause an early return from a handler (using the question mark operator).
+/// It can also represent any other kind of error (using the `anyhow::Error` type). These
+/// errors are logged (if you enable the logging filter) and converted to a 500 Internal Server Error
+/// with no other details.
+///
+/// HTTP level error should be created with the `http` methods (which accepts a `Responder` rather than
+/// just `Response`) and Internal errors should be created with the `From`/`Into` implementation.
+pub enum Error {
+    /// An error that should get returned to the client
+    Http(Response),
+    /// Internal errors, reported as 500 Internal Server Error and logged locally
+    Internal(anyhow::Error),
 }
 
 impl Error {
-    /// Create a new `Error`.
-    #[inline]
-    pub fn new<E: Into<BoxError>>(err: E) -> Error {
-        Error { inner: err.into() }
+    /// Convert this error into a boxed std::error::Error
+    pub(crate) fn into_std(self) -> Box<dyn StdError + Send + Sync + 'static> {
+        match self {
+            Error::Http(_) => panic!("http error??!"),
+            Error::Internal(err) => err.into(),
+        }
+    }
+
+    /// Create an Error from a `Responder` - the `Responder` will be converted to a response
+    /// and returned to the HTTP Client exactly the same way as an `Result::Ok` would be.
+    /// This is useful in conjunction with the `?` operator for early returns.
+    pub fn http(resp: impl Responder) -> Self {
+        match resp.into_response() {
+            Ok(r) => Self::Http(r),
+            Err(e) => e,
+        }
+    }
+
+    /// Create a 400 Bad Request Error from a `Responder` - this method is similar to [Error::http]
+    /// but it also sets the status code
+    pub fn bad_request(resp: impl Responder) -> Self {
+        Self::http((StatusCode::BAD_REQUEST, resp))
     }
 }
 
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Skip showing worthless `Error { .. }` wrapper.
-        fmt::Debug::fmt(&self.inner, f)
+impl Responder for Error {
+    fn into_response(self) -> Result<Response> {
+        match self {
+            Error::Http(resp) => Ok(resp),
+            Error::Internal(_err) => {
+                //log::error!("internal server error: {}", err);
+                Ok(Response::status(StatusCode::INTERNAL_SERVER_ERROR))
+            }
+        }
     }
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
+impl<E> From<E> for Error
+where
+    //E: std::error::Error + Send + Sync + 'static,
+    E: Into<anyhow::Error>,
+{
+    fn from(e: E) -> Self {
+        //Error::Internal(anyhow::Error::new(e))
+        Error::Internal(e.into())
     }
 }
 
-impl StdError for Error {}
-
-impl From<Infallible> for Error {
-    fn from(infallible: Infallible) -> Error {
-        match infallible {}
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Internal(err) => f
+                .debug_struct("Error::Internal")
+                .field("inner", err)
+                .finish(),
+            Error::Http(resp) => f.debug_struct("Error::Http").field("inner", resp).finish(),
+        }
     }
 }
 
-#[cfg(debug_assertions)]
-#[async_trait]
-impl Writer for Error {
-    #[inline]
-    async fn write(mut self, _req: &mut Request, _depot: &mut Depot, res: &mut Response) {
-        res.set_http_error(
-            crate::http::errors::InternalServerError().with_detail(&self.to_string()),
-        );
-    }
-}
-
-#[cfg(not(debug_assertions))]
-#[async_trait]
-impl Writer for Error {
-    #[inline]
-    async fn write(mut self, _req: &mut Request, _depot: &mut Depot, res: &mut Response) {
-        res.set_status_code(crate::http::StatusCode::INTERNAL_SERVER_ERROR);
-    }
-}
-
-#[test]
-fn error_size_of() {
-    assert_eq!(
-        ::std::mem::size_of::<Error>(),
-        ::std::mem::size_of::<usize>() * 2
-    );
-}
-
-#[cfg(debug_assertions)]
-#[cfg(feature = "anyhow")]
-#[async_trait]
-impl Writer for ::anyhow::Error {
-    async fn write(mut self, _req: &mut Request, _depot: &mut Depot, res: &mut Response) {
-        res.set_http_error(
-            crate::http::errors::InternalServerError().with_detail(&self.to_string()),
-        );
-    }
-}
-
-#[cfg(not(debug_assertions))]
-#[cfg(feature = "anyhow")]
-#[async_trait]
-impl Writer for ::anyhow::Error {
-    async fn write(mut self, _req: &mut Request, _depot: &mut Depot, res: &mut Response) {
-        res.set_http_error(crate::http::errors::InternalServerError());
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::http::*;
-
-    use super::*;
-
-    #[tokio::test]
-    #[cfg(feature = "anyhow")]
-    async fn test_anyhow() {
-        let mut req = Request::default();
-        let mut res = Response::default();
-        let mut depot = Depot::new();
-
-        let err: ::anyhow::Error = Error::new("detail message").into();
-        err.write(&mut req, &mut depot, &mut res).await;
-        assert_eq!(
-            res.status_code(),
-            Some(crate::http::StatusCode::INTERNAL_SERVER_ERROR)
-        );
-    }
-
-    #[tokio::test]
-    async fn test_error() {
-        let mut req = Request::default();
-        let mut res = Response::default();
-        let mut depot = Depot::new();
-
-        let err = Error::new("detail message");
-        err.write(&mut req, &mut depot, &mut res).await;
-        assert_eq!(
-            res.status_code(),
-            Some(crate::http::StatusCode::INTERNAL_SERVER_ERROR)
-        );
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Internal(err) => write!(f, "Internal Error: {:?}", err),
+            Error::Http(resp) => write!(f, "{:?}", resp),
+        }
     }
 }
