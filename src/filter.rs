@@ -2,27 +2,30 @@ use crate::endpoint::Endpoint;
 /// Filters are reusable bits of logic that wrap endpoints.
 ///
 /// (These are sometimes called "middleware" in other frameworks).
-use crate::{Request, Response, Result};
+use crate::{Request, Response, Result, State};
 use async_trait::async_trait;
 use std::future::Future;
 
 mod log;
-// pub mod session; // TODO - export the needed bits of this
+pub mod session; // TODO - export the needed bits of this
 
 pub use self::log::Log;
 
 /// Represents either the next Filter in the chain, or the actual endpoint if the chain is
 /// empty or completed. Use its `next` method to call the next filter/endpoint if the
 /// request should continue to be processed.
-pub struct Next<'a, 'b> {
-    pub(crate) ep: &'a (dyn Endpoint<'b> + Send + Sync),
-    pub(crate) rest: &'a [Box<dyn Filter + Send + Sync + 'static>],
+pub struct Next<'a, S>
+where
+    S: Send + Sync + 'static,
+{
+    pub(crate) ep: &'a (dyn Endpoint<S> + Send + Sync),
+    pub(crate) rest: &'a [Box<dyn Filter<S> + Send + Sync + 'static>],
 }
 
-impl Next<'_, '_> {
+impl<S: State> Next<'_, S> {
     /// Call either the next filter in the chain, or the actual endpoint if there are no more
     /// filters. Filters are not required to call next (eg. to return a Forbidden status instead)
-    pub async fn next(self, req: Request) -> Result<Response> {
+    pub async fn next(self, req: Request<S>) -> Result<Response> {
         match self.rest.split_first() {
             Some((head, rest)) => {
                 let next = Next { ep: self.ep, rest };
@@ -43,27 +46,28 @@ impl Next<'_, '_> {
 /// # use highnoon::{filter::{Filter, Next}, State, Result, Request, Response};
 /// struct NoOpFilter;
 ///
-/// #[async_trait]
-/// impl<S: State> Filter for NoOpFilter
+/// #[async_trait::async_trait]
+/// impl<S: State> Filter<S> for NoOpFilter
 /// {
-///     async fn apply(&self, req: Request, next: Next<'_>) -> Result<Response> {
-///         next.next(req)
+///     async fn apply(&self, req: Request<S>, next: Next<'_, S>) -> Result<Response> {
+///         next.next(req).await
 ///     }
 /// }
 /// ```
 #[async_trait]
-pub trait Filter {
-    async fn apply(&self, req: Request, next: Next<'_, '_>) -> Result<Response>;
+pub trait Filter<S: State> {
+    async fn apply(&self, req: Request<S>, next: Next<'_, S>) -> Result<Response>;
 }
 
 // implement for async functions
 #[async_trait]
-impl<F, Fut> Filter for F
+impl<S, F, Fut> Filter<S> for F
 where
-    F: Send + Sync + 'static + for<'n> Fn(Request, Next<'n, '_>) -> Fut,
+    S: State,
+    F: Send + Sync + 'static + for<'n> Fn(Request<S>, Next<'n, S>) -> Fut,
     Fut: Send + 'static + Future<Output = Result<Response>>,
 {
-    async fn apply(&self, req: Request, next: Next<'_, '_>) -> Result<Response> {
+    async fn apply(&self, req: Request<S>, next: Next<'_, S>) -> Result<Response> {
         self(req, next).await
     }
 }

@@ -1,25 +1,28 @@
 use crate::endpoint::Endpoint;
-
+use crate::state::State;
 use crate::{Request, Responder};
 use hyper::{Method, StatusCode};
 use route_recognizer::Params;
 use std::collections::HashMap;
 
-type DynEndpoint<'a> = dyn Endpoint<'a> + Send + Sync + 'a;
+type DynEndpoint<S> = dyn Endpoint<S> + Send + Sync + 'static;
 
-type Recogniser<'a> = route_recognizer::Router<Box<DynEndpoint<'a>>>;
+type Recogniser<S> = route_recognizer::Router<Box<DynEndpoint<S>>>;
 
-pub(crate) struct Router<'a> {
-    methods: HashMap<Method, Recogniser<'a>>,
-    all: Recogniser<'a>,
+pub(crate) struct Router<S> {
+    methods: HashMap<Method, Recogniser<S>>,
+    all: Recogniser<S>,
 }
 
-pub(crate) struct RouteTarget<'a, 'b> {
-    pub(crate) ep: &'a DynEndpoint<'b>,
+pub(crate) struct RouteTarget<'a, S>
+where
+    S: Send + Sync + 'static,
+{
+    pub(crate) ep: &'a DynEndpoint<S>,
     pub(crate) params: Params,
 }
 
-impl<'a> Router<'a> {
+impl<S: State> Router<S> {
     pub(crate) fn new() -> Self {
         Self {
             methods: HashMap::new(),
@@ -31,7 +34,7 @@ impl<'a> Router<'a> {
         &mut self,
         method: Method,
         path: &str,
-        ep: impl Endpoint<'a> + Sync + Send + 'a,
+        ep: impl Endpoint<S> + Sync + Send + 'static,
     ) {
         self.methods
             .entry(method)
@@ -39,11 +42,11 @@ impl<'a> Router<'a> {
             .add(path, Box::new(ep))
     }
 
-    pub(crate) fn add_all(&mut self, path: &str, ep: impl Endpoint<'a> + Sync + Send + 'a) {
+    pub(crate) fn add_all(&mut self, path: &str, ep: impl Endpoint<S> + Sync + Send + 'static) {
         self.all.add(path, Box::new(ep))
     }
 
-    pub(crate) fn lookup(&self, method: &Method, path: &str) -> RouteTarget<'_, 'a> {
+    pub(crate) fn lookup(&self, method: &Method, path: &str) -> RouteTarget<S> {
         if let Some(match_) = self
             .methods
             .get(method)
@@ -77,10 +80,10 @@ impl<'a> Router<'a> {
     }
 }
 
-async fn method_not_allowed(_: Request) -> impl Responder {
+async fn method_not_allowed<S: State>(_: Request<S>) -> impl Responder {
     StatusCode::METHOD_NOT_ALLOWED
 }
 
-async fn not_found(_: Request) -> impl Responder {
+async fn not_found<S: State>(_: Request<S>) -> impl Responder {
     StatusCode::NOT_FOUND
 }

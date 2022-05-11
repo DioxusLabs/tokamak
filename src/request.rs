@@ -1,3 +1,4 @@
+use crate::state::State;
 use crate::{App, Error, Result};
 use cookie::{Cookie, CookieJar};
 use headers::{Header, HeaderMapExt};
@@ -5,27 +6,28 @@ use hyper::header::HeaderValue;
 use hyper::{body::Buf, Body, HeaderMap, StatusCode};
 use route_recognizer::Params;
 use serde::de::DeserializeOwned;
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::error;
 
 /// An incoming request
-pub struct Request {
+pub struct Request<S: State> {
+    pub(crate) app: Arc<App<S>>,
     params: Params,
     inner: hyper::Request<Body>,
     remote_addr: SocketAddr,
 }
 
-impl Request {
+impl<S: State> Request<S> {
     pub(crate) fn new(
+        app: Arc<App<S>>,
         inner: hyper::Request<Body>,
         params: Params,
         remote_addr: SocketAddr,
     ) -> Self {
         Self {
+            app,
             inner,
             params,
             remote_addr,
@@ -40,6 +42,12 @@ impl Request {
         for (k, v) in params.iter() {
             self.params.insert(k.to_owned(), v.to_owned());
         }
+    }
+
+    /// Get a reference to the App's state
+    #[inline]
+    pub fn state(&self) -> &S {
+        self.app.state()
     }
 
     /// Get the HTTP method being used by this request

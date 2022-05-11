@@ -1,7 +1,7 @@
 use crate::filter::{Filter, Next};
 use crate::{Request, Response, Result};
 
-
+use crate::state::State;
 use async_trait::async_trait;
 use cookie::Cookie;
 use headers::{Header, SetCookie};
@@ -118,7 +118,7 @@ struct SessionInner {
 }
 
 /// A session
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct Session {
     inner: Arc<SessionInner>,
 }
@@ -166,71 +166,77 @@ impl Session {
     }
 }
 
-/// This trait must be implemented by the Context type in order to use the
-/// SessionFilter
-pub trait HasSession {
-    /// Get a reference to the Session for this current request
-    fn session(&mut self) -> &mut Session;
-}
+// /// This trait must be implemented by the Context type in order to use the
+// /// SessionFilter
+// pub trait HasSession {
+//     /// Get a reference to the Session for this current request
+//     fn session(&mut self) -> &mut Session;
+// }
 
-/// Implement HasSession on requests where the Context has sessions
-impl HasSession for Request {
-    fn session(&mut self) -> &mut Session {
-        self.context_mut().session()
-    }
-}
+// /// Implement HasSession on requests where the Context has sessions
+// impl<S> HasSession for Request<S>
+// where
+//     S: State,
+// {
+//     fn session(&mut self) -> &mut Session {
+//         self.context_mut().session()
+//     }
+// }
 
-#[async_trait]
-impl Filter for SessionFilter {
-    async fn apply(&self, mut req: Request, next: Next<'_>) -> Result<Response> {
-        let session = Arc::clone(&req.session().inner);
+// #[async_trait]
+// impl<S> Filter<S> for SessionFilter
+// where
+//     S: State,
+// {
+//     async fn apply(&self, mut req: Request<S>, next: Next<'_, S>) -> Result<Response> {
+//         let session = Arc::clone(&req.session().inner);
 
-        let maybe_sid = req
-            .cookies()?
-            .get(self.cookie_name.as_ref())
-            .map(|c| c.value().to_owned());
+//         let maybe_sid = req
+//             .cookies()?
+//             .get(self.cookie_name.as_ref())
+//             .map(|c| c.value().to_owned());
 
-        let sid = if let Some(sid) = maybe_sid {
-            debug!(%sid, "request has session cookie");
+//         let sid = if let Some(sid) = maybe_sid {
+//             debug!(%sid, "request has session cookie");
 
-            let store = self.store.lock().await;
-            let raw_data = store.get(&sid).await?.unwrap_or_else(String::new);
-            let data = serde_urlencoded::from_str(&raw_data)?;
-            session.load(data);
-            sid
-        } else {
-            debug!("request has no session cookie");
-            Uuid::new_v4().to_string()
-        };
+//             let store = self.store.lock().await;
+//             let raw_data = store.get(&sid).await?.unwrap_or_else(String::new);
+//             let data = serde_urlencoded::from_str(&raw_data)?;
+//             session.load(data);
+//             sid
+//         } else {
+//             debug!("request has no session cookie");
+//             Uuid::new_v4().to_string()
+//         };
 
-        let mut resp = next.next(req).await?;
+//         let mut resp = next.next(req).await?;
 
-        if session.is_modified() {
-            debug!("session was modified");
+//         if session.is_modified() {
+//             debug!("session was modified");
 
-            let mut store = self.store.lock().await;
-            let raw_data = {
-                let data = session.data.lock().unwrap();
-                serde_urlencoded::to_string(&*data)?
-            };
+//             let mut store = self.store.lock().await;
+//             let raw_data = {
+//                 let data = session.data.lock().unwrap();
+//                 serde_urlencoded::to_string(&*data)?
+//             };
 
-            let mut cookie = Cookie::new(self.cookie_name.as_ref(), &sid);
-            cookie.set_http_only(true);
-            cookie.set_secure(true);
-            cookie.set_same_site(cookie::SameSite::Strict);
+//             let mut cookie = Cookie::new(self.cookie_name.as_ref(), &sid);
+//             cookie.set_http_only(true);
+//             cookie.set_secure(true);
+//             cookie.set_same_site(cookie::SameSite::Strict);
 
-            let expiry = time::OffsetDateTime::now_utc() + self.expiry;
-            cookie.set_expires(expiry);
+//             let expiry = time::OffsetDateTime::now_utc() + self.expiry;
+//             cookie.set_expires(expiry);
 
-            if let Some(ref callback) = self.cookie_callback {
-                callback(&mut cookie);
-            }
+//             if let Some(ref callback) = self.cookie_callback {
+//                 callback(&mut cookie);
+//             }
 
-            resp.set_raw_header(SetCookie::name(), cookie.to_string())?;
+//             resp.set_raw_header(SetCookie::name(), cookie.to_string())?;
 
-            store.set(sid, raw_data).await?;
-        }
+//             store.set(sid, raw_data).await?;
+//         }
 
-        Ok(resp)
-    }
-}
+//         Ok(resp)
+//     }
+// }

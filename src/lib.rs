@@ -11,7 +11,9 @@ mod request;
 mod responder;
 mod response;
 mod router;
+mod state;
 mod static_files;
+mod test_client;
 pub mod ws;
 
 pub use app::{App, Route};
@@ -20,13 +22,10 @@ pub use error::Error;
 pub use request::Request;
 pub use responder::{Form, Json, Responder};
 pub use response::Response;
+pub use state::State;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub fn new<'b>() -> App<'b> {
-    App::new()
-}
-
-pub async fn launch(app: App<'_>) -> Result<()> {
+pub fn new<S: State>(s: S) -> App<S> {
     todo!()
 }

@@ -1,6 +1,6 @@
 use crate::endpoint::Endpoint;
-
-use crate::{Request, Response, Result};
+use crate::state::State;
+use crate::{App, Request, Response, Result};
 use async_trait::async_trait;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
@@ -16,33 +16,38 @@ use tracing::trace;
 /// An endpoint for accepting a websocket connection.
 /// Typically constructed by the `Route::ws` method.
 #[derive(Debug)]
-pub struct WsEndpoint<H, F>
+pub struct WsEndpoint<H, F, S>
 where
-    H: Send + Sync + 'static + Fn(WebSocketSender, WebSocketReceiver) -> F,
+    S: Send + Sync + 'static,
+    H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,
 {
     handler: Arc<H>,
+    _phantoms: PhantomData<S>,
 }
 
 /// Create a websocket endpoint.
 /// Typically called by the `Route::ws` method.
-pub fn endpoint<H, F>(handler: H) -> WsEndpoint<H, F>
+pub fn endpoint<H, F, S>(handler: H) -> WsEndpoint<H, F, S>
 where
-    H: Send + Sync + 'static + Fn(WebSocketSender, WebSocketReceiver) -> F,
+    S: Send + Sync + 'static,
+    H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,
 {
     WsEndpoint {
         handler: Arc::new(handler),
+        _phantoms: PhantomData,
     }
 }
 
 #[async_trait]
-impl<H, F> Endpoint<'_> for WsEndpoint<H, F>
+impl<H, F, S> Endpoint<S> for WsEndpoint<H, F, S>
 where
-    H: Send + Sync + 'static + Fn(WebSocketSender, WebSocketReceiver) -> F,
+    S: State,
+    H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,
 {
-    async fn call(&self, req: Request) -> Result<Response> {
+    async fn call(&self, req: Request<S>) -> Result<Response> {
         let handler = self.handler.clone();
 
         let res = upgrade_connection(req, handler).await;
@@ -51,9 +56,10 @@ where
     }
 }
 
-async fn upgrade_connection<H, F>(req: Request, handler: Arc<H>) -> Response
+async fn upgrade_connection<S, H, F>(req: Request<S>, handler: Arc<H>) -> Response
 where
-    H: Send + Sync + 'static + Fn(WebSocketSender, WebSocketReceiver) -> F,
+    S: State,
+    H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,
 {
     // TODO - check various headers
@@ -86,6 +92,7 @@ where
 
     trace!("upgrading connection to websocket");
 
+    let state = req.app.clone();
     tokio::spawn(async move {
         let upgraded = hyper::upgrade::on(req.into_inner())
             .await
@@ -100,6 +107,7 @@ where
 
         let (tx, rx) = ws.split();
         let _ = (handler)(
+            state,
             WebSocketSender { inner: tx },
             WebSocketReceiver { inner: rx },
         )

@@ -1,5 +1,5 @@
 use crate::endpoint::Endpoint;
-
+use crate::state::State;
 use crate::{Request, Response, Result};
 use async_trait::async_trait;
 use hyper::StatusCode;
@@ -7,12 +7,19 @@ use std::marker::PhantomData;
 use std::path::{Component, PathBuf};
 use tracing::{debug, warn};
 
-pub(crate) struct StaticFiles {
+pub(crate) struct StaticFiles<S>
+where
+    S: Send + Sync + 'static,
+{
     root: PathBuf,
     prefix: PathBuf,
+    _phantom: PhantomData<S>,
 }
 
-impl StaticFiles {
+impl<S> StaticFiles<S>
+where
+    S: Send + Sync + 'static,
+{
     pub(crate) fn new(root: impl Into<PathBuf>, prefix: impl Into<PathBuf>) -> Self {
         let mut prefix = prefix.into();
         // remove the final wildcard path segment
@@ -21,13 +28,14 @@ impl StaticFiles {
         Self {
             root: root.into(),
             prefix,
+            _phantom: PhantomData,
         }
     }
 }
 
 #[async_trait]
-impl Endpoint<'_> for StaticFiles {
-    async fn call(&self, req: Request) -> Result<Response> {
+impl<S: State> Endpoint<S> for StaticFiles<S> {
+    async fn call(&self, req: Request<S>) -> Result<Response> {
         let path = PathBuf::from(req.uri().path());
 
         let mut target = self.root.clone();

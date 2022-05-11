@@ -1,3 +1,4 @@
+use crate::state::State;
 /// Exposes the `Endpoint` trait if you want to implement it for custom types.
 ///
 /// This is not usually necessary since it's implemented for function types already.
@@ -17,27 +18,28 @@ use std::future::Future;
 /// # use highnoon::{Endpoint, State, Result, Request, Response};
 /// struct NoOpEndpoint;
 ///
-/// #[async_trait]
-/// impl<S: State> Endpoint for NoOpEndpoint
+/// #[async_trait::async_trait]
+/// impl<S: State> Endpoint<S> for NoOpEndpoint
 /// {
-///     async fn call(&self, req: Request) -> Result<Response> {
+///     async fn call(&self, req: Request<S>) -> Result<Response> {
 ///         Ok(Response::ok())
 ///     }
 /// }
 /// ```
 #[async_trait]
-pub trait Endpoint<'a> {
-    async fn call(&self, req: Request) -> Result<Response>;
+pub trait Endpoint<S: State> {
+    async fn call(&self, req: Request<S>) -> Result<Response>;
 }
 
 #[async_trait]
-impl<'a, F, Fut, R> Endpoint<'a> for F
+impl<S, F, Fut, R> Endpoint<S> for F
 where
-    F: Send + Sync + 'a + Fn(Request) -> Fut,
-    Fut: Future<Output = R> + Send + 'a,
-    R: Responder + 'a,
+    F: Send + Sync + 'static + Fn(Request<S>) -> Fut,
+    Fut: Future<Output = R> + Send + 'static,
+    R: Responder + 'static,
+    S: State,
 {
-    async fn call(&self, req: Request) -> Result<Response> {
+    async fn call(&self, req: Request<S>) -> Result<Response> {
         (self)(req).await.into_response()
     }
 }
