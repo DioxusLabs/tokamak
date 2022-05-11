@@ -4,6 +4,7 @@ use crate::{Request, Responder};
 use hyper::{Method, StatusCode};
 use route_recognizer::Params;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 type DynEndpoint<S> = dyn Endpoint<S> + Send + Sync + 'static;
 
@@ -80,10 +81,10 @@ impl<S: State> Router<S> {
     }
 }
 
-async fn method_not_allowed<S: State>(_: Request<S>) -> impl Responder {
+async fn method_not_allowed<S: State>(state: Arc<S>, _: Request) -> impl Responder {
     StatusCode::METHOD_NOT_ALLOWED
 }
 
-async fn not_found<S: State>(_: Request<S>) -> impl Responder {
+async fn not_found<S: State>(state: Arc<S>, _: Request) -> impl Responder {
     StatusCode::NOT_FOUND
 }

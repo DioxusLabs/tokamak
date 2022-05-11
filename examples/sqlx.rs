@@ -3,7 +3,7 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokamak::{
     ws::{WebSocketReceiver, WebSocketSender},
-    App, Request, Responder, Result,
+    Request, Responder, Result,
 };
 
 #[tokio::main]
@@ -17,10 +17,10 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn delete_todo(req: Request<SqlitePool>) -> impl Responder {
+async fn delete_todo(state: Arc<SqlitePool>, req: Request) -> impl Responder {
     // Insert the task, then obtain the ID of this row
     let id = sqlx::query(r#" INSERT INTO todos ( description ) VALUES ( ?1 ) "#)
-        .execute(&mut req.state().acquire().await.unwrap())
+        .execute(&mut state.acquire().await.unwrap())
         .await
         .unwrap()
         .last_insert_rowid();
@@ -29,7 +29,7 @@ async fn delete_todo(req: Request<SqlitePool>) -> impl Responder {
 }
 
 async fn todo_ws(
-    state: Arc<App<SqlitePool>>,
+    state: Arc<SqlitePool>,
     mut tx: WebSocketSender,
     mut rx: WebSocketReceiver,
 ) -> Result<()> {

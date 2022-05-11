@@ -24,7 +24,7 @@ use tracing::info;
 /// Each `App` has a chain of [`Filters`](Filter)
 /// which are applied to each request.
 pub struct App<S: State> {
-    state: S,
+    state: Arc<S>,
     routes: Router<S>,
     filters: Vec<Box<dyn Filter<S> + Send + Sync + 'static>>,
 }
@@ -94,7 +94,7 @@ impl<'a, 'p, S: State> Route<'a, 'p, S> {
     /// Attach a websocket handler to this route
     pub fn ws<H, F>(self, handler: H)
     where
-        H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
+        H: Send + Sync + 'static + Fn(Arc<S>, WebSocketSender, WebSocketReceiver) -> F,
         F: Future<Output = Result<()>> + Send + 'static,
     {
         self.method(Method::GET, crate::ws::endpoint(handler));
@@ -107,7 +107,7 @@ impl<S: State> App<S> {
     /// If you need inner mutability use a `Mutex` or similar.
     pub fn new(state: S) -> Self {
         Self {
-            state,
+            state: Arc::new(state),
             routes: Router::new(),
             filters: vec![],
         }
@@ -192,14 +192,14 @@ impl<S: State> App<S> {
     ) -> Result<hyper::Response<Body>> {
         let RouteTarget { ep, params } = app.routes.lookup(req.method(), req.uri().path());
 
-        let req = Request::new(app.clone(), req, params, addr);
+        let req = Request::new(req, params, addr);
 
         let next = Next {
             ep,
             rest: &*app.filters,
         };
 
-        next.next(req)
+        next.next(app.state.clone(), req)
             .await
             .or_else(|err| err.into_response())
             .map(|resp| resp.into_inner())
@@ -212,7 +212,7 @@ struct MountedApp<S: State> {
 
 #[async_trait]
 impl<S: State> Endpoint<S> for MountedApp<S> {
-    async fn call(&self, req: Request<S>) -> Result<Response> {
+    async fn call(&self, state: Arc<S>, req: Request) -> Result<Response> {
         // deconstruct the request from the outer state
         let (inner, params, remote_addr) = req.into_parts();
         // get the part of the path still to be routed
@@ -226,7 +226,7 @@ impl<S: State> Endpoint<S> for MountedApp<S> {
         } = self.app.routes.lookup(inner.method(), path_rest);
 
         // construct a new request for the inner state type
-        let mut req2 = Request::new(self.app.clone(), inner, params, remote_addr);
+        let mut req2 = Request::new(inner, params, remote_addr);
 
         // merge the inner params
         req2.merge_params(params2);
@@ -237,6 +237,6 @@ impl<S: State> Endpoint<S> for MountedApp<S> {
             rest: &*self.app.filters,
         };
 
-        next.next(req2).await
+        next.next(state, req2).await
     }
 }

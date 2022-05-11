@@ -188,7 +188,7 @@ impl Session {
 // where
 //     S: State,
 // {
-//     async fn apply(&self, mut req: Request<S>, next: Next<'_, S>) -> Result<Response> {
+//     async fn apply(&self, mut state: Arc<S>, req: Request, next: Next<'_, S>) -> Result<Response> {
 //         let session = Arc::clone(&req.session().inner);
 
 //         let maybe_sid = req

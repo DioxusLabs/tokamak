@@ -5,6 +5,7 @@ use crate::endpoint::Endpoint;
 use crate::{Request, Response, Result, State};
 use async_trait::async_trait;
 use std::future::Future;
+use std::sync::Arc;
 
 mod log;
 pub mod session; // TODO - export the needed bits of this
@@ -25,13 +26,13 @@ where
 impl<S: State> Next<'_, S> {
     /// Call either the next filter in the chain, or the actual endpoint if there are no more
     /// filters. Filters are not required to call next (eg. to return a Forbidden status instead)
-    pub async fn next(self, req: Request<S>) -> Result<Response> {
+    pub async fn next(self, state: Arc<S>, req: Request) -> Result<Response> {
         match self.rest.split_first() {
             Some((head, rest)) => {
                 let next = Next { ep: self.ep, rest };
-                head.apply(req, next).await
+                head.apply(state, req, next).await
             }
-            None => self.ep.call(req).await,
+            None => self.ep.call(state, req).await,
         }
     }
 }
@@ -49,14 +50,14 @@ impl<S: State> Next<'_, S> {
 /// #[async_trait::async_trait]
 /// impl<S: State> Filter<S> for NoOpFilter
 /// {
-///     async fn apply(&self, req: Request<S>, next: Next<'_, S>) -> Result<Response> {
+///     async fn apply(&self, state: Arc<S>, req: Request, next: Next<'_, S>) -> Result<Response> {
 ///         next.next(req).await
 ///     }
 /// }
 /// ```
 #[async_trait]
 pub trait Filter<S: State> {
-    async fn apply(&self, req: Request<S>, next: Next<'_, S>) -> Result<Response>;
+    async fn apply(&self, state: Arc<S>, req: Request, next: Next<'_, S>) -> Result<Response>;
 }
 
 // implement for async functions
@@ -64,10 +65,10 @@ pub trait Filter<S: State> {
 impl<S, F, Fut> Filter<S> for F
 where
     S: State,
-    F: Send + Sync + 'static + for<'n> Fn(Request<S>, Next<'n, S>) -> Fut,
+    F: Send + Sync + 'static + for<'n> Fn(Arc<S>, Request, Next<'n, S>) -> Fut,
     Fut: Send + 'static + Future<Output = Result<Response>>,
 {
-    async fn apply(&self, req: Request<S>, next: Next<'_, S>) -> Result<Response> {
-        self(req, next).await
+    async fn apply(&self, state: Arc<S>, req: Request, next: Next<'_, S>) -> Result<Response> {
+        self(state, req, next).await
     }
 }

@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use hyper::StatusCode;
 use std::marker::PhantomData;
 use std::path::{Component, PathBuf};
+use std::sync::Arc;
 use tracing::{debug, warn};
 
 pub(crate) struct StaticFiles<S>
@@ -35,7 +36,7 @@ where
 
 #[async_trait]
 impl<S: State> Endpoint<S> for StaticFiles<S> {
-    async fn call(&self, req: Request<S>) -> Result<Response> {
+    async fn call(&self, state: Arc<S>, req: Request) -> Result<Response> {
         let path = PathBuf::from(req.uri().path());
 
         let mut target = self.root.clone();

@@ -5,6 +5,7 @@ use crate::state::State;
 use crate::{Request, Responder, Response, Result};
 use async_trait::async_trait;
 use std::future::Future;
+use std::sync::Arc;
 
 /// Implement `Endpoint` for a type to be used as a method handler.
 ///
@@ -21,25 +22,25 @@ use std::future::Future;
 /// #[async_trait::async_trait]
 /// impl<S: State> Endpoint<S> for NoOpEndpoint
 /// {
-///     async fn call(&self, req: Request<S>) -> Result<Response> {
+///     async fn call(&self, state: Arc<S>, req: Request) -> Result<Response> {
 ///         Ok(Response::ok())
 ///     }
 /// }
 /// ```
 #[async_trait]
 pub trait Endpoint<S: State> {
-    async fn call(&self, req: Request<S>) -> Result<Response>;
+    async fn call(&self, state: Arc<S>, req: Request) -> Result<Response>;
 }
 
 #[async_trait]
 impl<S, F, Fut, R> Endpoint<S> for F
 where
-    F: Send + Sync + 'static + Fn(Request<S>) -> Fut,
+    F: Send + Sync + 'static + Fn(Arc<S>, Request) -> Fut,
     Fut: Future<Output = R> + Send + 'static,
     R: Responder + 'static,
     S: State,
 {
-    async fn call(&self, req: Request<S>) -> Result<Response> {
-        (self)(req).await.into_response()
+    async fn call(&self, state: Arc<S>, req: Request) -> Result<Response> {
+        (self)(state, req).await.into_response()
     }
 }

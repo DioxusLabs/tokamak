@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::filter::{Filter, Next};
 use crate::{Error, Request, Response, Result};
 use async_trait::async_trait;
@@ -22,13 +24,13 @@ fn log_response(method: String, uri: String, resp: &Response) {
 
 #[async_trait]
 impl<S: State> Filter<S> for Log {
-    async fn apply(&self, req: Request<S>, next: Next<'_, S>) -> Result<Response> {
+    async fn apply(&self, state: Arc<S>, req: Request, next: Next<'_, S>) -> Result<Response> {
         let method = req.method().to_string();
         let uri = req.uri().to_string();
 
         debug!(%method, %uri, "request");
 
-        let result = next.next(req).await;
+        let result = next.next(state, req).await;
 
         match &result {
             Ok(resp) => log_response(method, uri, resp),

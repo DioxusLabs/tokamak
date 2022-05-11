@@ -19,7 +19,7 @@ use tracing::trace;
 pub struct WsEndpoint<H, F, S>
 where
     S: Send + Sync + 'static,
-    H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
+    H: Send + Sync + 'static + Fn(Arc<S>, WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,
 {
     handler: Arc<H>,
@@ -31,7 +31,7 @@ where
 pub fn endpoint<H, F, S>(handler: H) -> WsEndpoint<H, F, S>
 where
     S: Send + Sync + 'static,
-    H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
+    H: Send + Sync + 'static + Fn(Arc<S>, WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,
 {
     WsEndpoint {
@@ -44,22 +44,22 @@ where
 impl<H, F, S> Endpoint<S> for WsEndpoint<H, F, S>
 where
     S: State,
-    H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
+    H: Send + Sync + 'static + Fn(Arc<S>, WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,
 {
-    async fn call(&self, req: Request<S>) -> Result<Response> {
+    async fn call(&self, state: Arc<S>, req: Request) -> Result<Response> {
         let handler = self.handler.clone();
 
-        let res = upgrade_connection(req, handler).await;
+        let res = upgrade_connection(state, req, handler).await;
 
         Ok(res)
     }
 }
 
-async fn upgrade_connection<S, H, F>(req: Request<S>, handler: Arc<H>) -> Response
+async fn upgrade_connection<S, H, F>(state: Arc<S>, req: Request, handler: Arc<H>) -> Response
 where
     S: State,
-    H: Send + Sync + 'static + Fn(Arc<App<S>>, WebSocketSender, WebSocketReceiver) -> F,
+    H: Send + Sync + 'static + Fn(Arc<S>, WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,
 {
     // TODO - check various headers
@@ -92,7 +92,6 @@ where
 
     trace!("upgrading connection to websocket");
 
-    let state = req.app.clone();
     tokio::spawn(async move {
         let upgraded = hyper::upgrade::on(req.into_inner())
             .await
