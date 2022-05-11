@@ -1,4 +1,3 @@
-use crate::state::SharedState;
 /// Exposes the `Endpoint` trait if you want to implement it for custom types.
 ///
 /// This is not usually necessary since it's implemented for function types already.
@@ -27,16 +26,16 @@ use std::future::Future;
 /// }
 /// ```
 #[async_trait]
-pub trait Endpoint {
+pub trait Endpoint<'a> {
     async fn call(&self, req: Request) -> Result<Response>;
 }
 
 #[async_trait]
-impl<F, Fut, R> Endpoint for F
+impl<'a, F, Fut, R> Endpoint<'a> for F
 where
-    F: Send + Sync + 'static + Fn(Request) -> Fut,
-    Fut: Future<Output = R> + Send + 'static,
-    R: Responder + 'static,
+    F: Send + Sync + 'a + Fn(Request) -> Fut,
+    Fut: Future<Output = R> + Send + 'a,
+    R: Responder + 'a,
 {
     async fn call(&self, req: Request) -> Result<Response> {
         (self)(req).await.into_response()

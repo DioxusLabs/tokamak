@@ -1,7 +1,6 @@
 use crate::endpoint::Endpoint;
 use crate::filter::{Filter, Next};
 use crate::router::{RouteTarget, Router};
-use crate::state::SharedState;
 use crate::static_files::StaticFiles;
 use crate::ws::{WebSocketReceiver, WebSocketSender};
 use crate::{Request, Responder, Response, Result};
@@ -21,48 +20,62 @@ use tracing::info;
 /// or mounted into another `App`.
 /// Each `App` has a chain of [`Filters`](Filter)
 /// which are applied to each request.
-pub struct App {
-    routes: Router,
+pub struct App<'a> {
+    routes: Router<'a>,
     filters: Vec<Box<dyn Filter + Send + Sync + 'static>>,
 }
 
 /// Returned by [App::at] and attaches method handlers to a route.
-pub struct Route<'a, 'p> {
+pub struct Route<'a, 'p, 'b> {
     path: &'p str,
-    app: &'a mut App,
+    app: &'a mut App<'b>,
 }
 
-impl<'a, 'p> Route<'a, 'p> {
+impl<'a, 'p, 'b> Route<'a, 'p, 'b> {
     /// Attach an endpoint for a specific HTTP method
-    pub fn method(self, method: Method, ep: impl Endpoint + Send + Sync + 'static) -> Self {
+    pub fn method(self, method: Method, ep: impl Endpoint<'b> + Send + Sync + 'b) -> Self {
         self.app.routes.add(method, self.path, ep);
         self
     }
 
     /// Attach an endpoint for all HTTP methods. These will be checked only if no
     /// specific endpoint exists for the method.
-    pub fn all(self, ep: impl Endpoint + Send + Sync + 'static) -> Self {
+    pub fn all(self, ep: impl Endpoint<'b> + Send + Sync + 'b) -> Self {
         self.app.routes.add_all(self.path, ep);
         self
     }
 
+    // /// Attach an endpoint for GET requests
+    // pub fn get(self, ep: impl Endpoint<'b> + Send + Sync) -> Self {
+    //     self.method(Method::GET, ep)
+    // }
+    // /// Attach an endpoint for GET requests
+    // pub fn get(self, ep: impl Endpoint<'b> + Send + Sync) -> Self {
+    //     self.method(Method::GET, ep)
+    // }
+
     /// Attach an endpoint for GET requests
-    pub fn get(self, ep: impl Endpoint + Send + Sync + 'static) -> Self {
-        self.method(Method::GET, ep)
+    pub fn get(self, ep: impl Endpoint<'b> + Send + Sync + 'a) -> Self {
+        todo!()
     }
 
-    /// Attach an endpoint for POST requests
-    pub fn post(self, ep: impl Endpoint + Send + Sync + 'static) -> Self {
-        self.method(Method::POST, ep)
+    /// Attach an endpoint for GET requests
+    pub fn post(self, ep: impl Endpoint<'b> + Send + Sync + 'a) -> Self {
+        todo!()
     }
+
+    // /// Attach an endpoint for POST requests
+    // pub fn post(self, ep: impl Endpoint<'b> + Send + Sync) -> Self {
+    //     self.method(Method::POST, ep)
+    // }
 
     /// Attach an endpoint for PUT requests
-    pub fn put(self, ep: impl Endpoint + Send + Sync + 'static) -> Self {
+    pub fn put(self, ep: impl Endpoint<'b> + Send + Sync + 'b) -> Self {
         self.method(Method::PUT, ep)
     }
 
     /// Attach an endpoint for DELETE requests
-    pub fn delete(self, ep: impl Endpoint + Send + Sync + 'static) -> Self {
+    pub fn delete(self, ep: impl Endpoint<'b> + Send + Sync + 'b) -> Self {
         self.method(Method::DELETE, ep)
     }
 
@@ -82,7 +95,7 @@ impl<'a, 'p> Route<'a, 'p> {
     /// The App may have a different state type, but its `Context` must implement `From` to perform
     /// the conversion from the parent state's `Context` - *the inner `App`'s `new_context` won't
     /// be called*.
-    pub fn mount(&mut self, app: App) {
+    pub fn mount(&mut self, app: App<'b>) {
         let path = self.path.to_owned() + "/*-highnoon-path-rest-";
         let mounted = MountedApp { app: Arc::new(app) };
         self.app.at(&path).all(mounted);
@@ -98,7 +111,7 @@ impl<'a, 'p> Route<'a, 'p> {
     }
 }
 
-impl App {
+impl<'b> App<'b> {
     /// Create a new `App` with the given state.
     /// State must be `Send + Sync + 'static` because it gets shared by all route handlers.
     /// If you need inner mutability use a `Mutex` or similar.
@@ -125,8 +138,14 @@ impl App {
 
     /// Create a route at the given path. Returns a [Route] object on which you can
     /// attach handlers for each HTTP method
-    pub fn at<'a, 'p>(&'a mut self, path: &'p str) -> Route<'a, 'p> {
+    pub fn at<'a, 'p>(&'a mut self, path: &'p str) -> Route<'a, 'p, 'b> {
         Route { path, app: self }
+    }
+
+    /// Create a route at the given path. Returns a [Route] object on which you can
+    /// attach handlers for each HTTP method
+    pub fn provide<'a, T>(&'a mut self, path: T) {
+        todo!()
     }
 
     /// Start a server listening on the given address (See [ToSocketAddrs] from tokio)
@@ -151,8 +170,10 @@ impl App {
     async fn internal_serve(self, builder: Builder<AddrIncoming>) -> anyhow::Result<()> {
         let app = Arc::new(self);
 
+        let static_app: Arc<App<'static>> = unsafe { std::mem::transmute(app) };
+
         let make_svc = make_service_fn(|addr_stream: &AddrStream| {
-            let app = app.clone();
+            let app = static_app.clone();
             let addr = addr_stream.remote_addr();
 
             async move {
@@ -163,7 +184,7 @@ impl App {
                         let RouteTarget { ep, params } =
                             app.routes.lookup(req.method(), req.uri().path());
 
-                        let req = Request::new(app.clone(), req, params, addr);
+                        let req = Request::new(req, params, addr);
 
                         let next = Next {
                             ep,
@@ -187,12 +208,12 @@ impl App {
     }
 }
 
-struct MountedApp {
-    app: Arc<App>,
+struct MountedApp<'b> {
+    app: Arc<App<'b>>,
 }
 
 #[async_trait]
-impl Endpoint for MountedApp {
+impl<'b> Endpoint<'b> for MountedApp<'b> {
     async fn call(&self, req: Request) -> Result<Response> {
         // deconstruct the request from the outer state
         let (inner, params, remote_addr) = req.into_parts();
@@ -207,7 +228,7 @@ impl Endpoint for MountedApp {
         } = self.app.routes.lookup(inner.method(), path_rest);
 
         // construct a new request for the inner state type
-        let mut req2 = Request::new(self.app.clone(), inner, params, remote_addr);
+        let mut req2 = Request::new(inner, params, remote_addr);
 
         // merge the inner params
         req2.merge_params(params2);
@@ -219,5 +240,43 @@ impl Endpoint for MountedApp {
         };
 
         next.next(req2).await
+    }
+}
+
+mod my_own {
+    use std::convert::Infallible;
+    use std::net::SocketAddr;
+
+    use hyper::service::{make_service_fn, service_fn};
+    use hyper::{Body, Request, Response, Server};
+
+    async fn hello(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+        Ok(Response::new(Body::from("Hello World!")))
+    }
+
+    pub async fn run(app: &String)
+    // where
+    //     A: Service<RequestBody = Body, ResponseBody = Body> + Send + Sync,
+    {
+        // For every connection, we must make a `Service` to handle all
+        // incoming HTTP requests on said connection.
+        let make_svc = make_service_fn(|_conn| {
+            // This is the `Service` that will handle the connection.
+            // `service_fn` is a helper to convert a function that
+            // returns a Response into a `Service`.
+            async {
+                let res = service_fn(hello);
+
+                Ok::<_, Infallible>(res)
+            }
+        });
+
+        let addr = ([127, 0, 0, 1], 3000).into();
+
+        let server = Server::bind(&addr).serve(make_svc);
+
+        println!("Listening on http://{}", addr);
+
+        server.await.unwrap();
     }
 }

@@ -1,5 +1,5 @@
 use crate::endpoint::Endpoint;
-use crate::state::SharedState;
+
 use crate::{Request, Response, Result};
 use async_trait::async_trait;
 use futures_util::stream::{SplitSink, SplitStream};
@@ -37,7 +37,7 @@ where
 }
 
 #[async_trait]
-impl<H, F> Endpoint for WsEndpoint<H, F>
+impl<H, F> Endpoint<'_> for WsEndpoint<H, F>
 where
     H: Send + Sync + 'static + Fn(WebSocketSender, WebSocketReceiver) -> F,
     F: Future<Output = Result<()>> + Send + 'static,

@@ -1,5 +1,5 @@
 use crate::endpoint::Endpoint;
-use crate::state::SharedState;
+
 use crate::{Request, Response, Result};
 use async_trait::async_trait;
 use hyper::StatusCode;
@@ -26,7 +26,7 @@ impl StaticFiles {
 }
 
 #[async_trait]
-impl Endpoint for StaticFiles {
+impl Endpoint<'_> for StaticFiles {
     async fn call(&self, req: Request) -> Result<Response> {
         let path = PathBuf::from(req.uri().path());
 

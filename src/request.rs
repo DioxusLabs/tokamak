@@ -1,4 +1,3 @@
-use crate::state::SharedState;
 use crate::{App, Error, Result};
 use cookie::{Cookie, CookieJar};
 use headers::{Header, HeaderMapExt};
@@ -15,8 +14,6 @@ use tracing::error;
 
 /// An incoming request
 pub struct Request {
-    app: Arc<App>,
-    // context: HashMap<TypeId, Arc<dyn Any + Send + Sync>>,
     params: Params,
     inner: hyper::Request<Body>,
     remote_addr: SocketAddr,
@@ -24,13 +21,11 @@ pub struct Request {
 
 impl Request {
     pub(crate) fn new(
-        app: Arc<App>,
         inner: hyper::Request<Body>,
         params: Params,
         remote_addr: SocketAddr,
     ) -> Self {
         Self {
-            app,
             inner,
             params,
             remote_addr,
@@ -46,21 +41,6 @@ impl Request {
             self.params.insert(k.to_owned(), v.to_owned());
         }
     }
-
-    // /// Get a reference to the App's state
-    // pub fn state(&self) -> &S {
-    //     self.app.state()
-    // }
-
-    // /// Get a reference to the request's context
-    // pub fn context(&self) -> &S {
-    //     &self.context
-    // }
-
-    // /// Get a mut reference to the request's context
-    // pub fn context_mut(&mut self) -> &mut S {
-    //     &mut self.context
-    // }
 
     /// Get the HTTP method being used by this request
     pub fn method(&self) -> &hyper::Method {

@@ -1,7 +1,7 @@
 use crate::filter::{Filter, Next};
 use crate::{Request, Response, Result};
 
-use crate::state::SharedState;
+
 use async_trait::async_trait;
 use cookie::Cookie;
 use headers::{Header, SetCookie};

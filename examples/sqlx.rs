@@ -1,45 +1,34 @@
-use tokamak::{App, Request, Response, Result};
+use std::net::SocketAddr;
 
-#[derive(Clone)]
-pub struct State {
-    pub db: sqlx::SqlitePool,
-}
+use sqlx::SqlitePool;
+use tokamak::{Request, Response, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut app = App::new(State {
-        db: sqlx::SqlitePool::connect("DATABASE_URL").await?,
+    let pool = sqlx::SqlitePool::connect("DATABASE_URL").await?;
+
+    let mut app = tokamak::new();
+
+    app.at("/dogs")
+        .get(|req| async {
+            pool.acquire().await.unwrap();
+
+            Response::ok()
+        })
+        .post(|req| async {
+            pool.acquire().await.unwrap();
+
+            Response::ok()
+        });
+
+    app.at("/dogs/ws/").ws(|rx, tx| async {
+        //
+        Ok(())
     });
-
-    app.at("/dogs")
-        .get(get_dogs)
-        .get(get_dogs)
-        .get(get_dogs)
-        .get(get_dogs);
-
-    app.at("/dogs")
-        .get(get_dogs)
-        .get(get_dogs)
-        .get(get_dogs)
-        .get(get_dogs);
-
-    app.listen("127.0.0.1").await?;
 
     Ok(())
 }
 
-pub async fn create_dogs(req: Request<State>) -> Response {
-    Response::ok()
-}
-
-pub async fn get_dogs(req: Request<State>) -> Response {
-    Response::ok()
-}
-
-pub async fn update_dogs(req: Request<State>) -> Response {
-    Response::ok()
-}
-
-pub async fn delete_dogs(req: Request<State>) -> Response {
-    Response::ok()
+async fn get_dogs(req: Request, pool: &SqlitePool) -> Result<Response> {
+    Ok(Response::ok())
 }

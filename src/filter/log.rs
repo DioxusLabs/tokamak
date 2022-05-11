@@ -2,7 +2,6 @@ use crate::filter::{Filter, Next};
 use crate::{Error, Request, Response, Result};
 use async_trait::async_trait;
 
-use crate::state::SharedState;
 use tracing::{debug, error, info, warn};
 
 /// A logging filter. Logs all requests at debug level, and logs responses at error, warn or info
@@ -22,7 +21,7 @@ fn log_response(method: String, uri: String, resp: &Response) {
 
 #[async_trait]
 impl Filter for Log {
-    async fn apply(&self, req: Request, next: Next<'_>) -> Result<Response> {
+    async fn apply(&self, req: Request, next: Next<'_, '_>) -> Result<Response> {
         let method = req.method().to_string();
         let uri = req.uri().to_string();
 

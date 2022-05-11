@@ -1,25 +1,25 @@
 use crate::endpoint::Endpoint;
-use crate::state::SharedState;
+
 use crate::{Request, Responder};
 use hyper::{Method, StatusCode};
 use route_recognizer::Params;
 use std::collections::HashMap;
 
-type DynEndpoint = dyn Endpoint + Send + Sync + 'static;
+type DynEndpoint<'a> = dyn Endpoint<'a> + Send + Sync + 'a;
 
-type Recogniser = route_recognizer::Router<Box<DynEndpoint>>;
+type Recogniser<'a> = route_recognizer::Router<Box<DynEndpoint<'a>>>;
 
-pub(crate) struct Router {
-    methods: HashMap<Method, Recogniser>,
-    all: Recogniser,
+pub(crate) struct Router<'a> {
+    methods: HashMap<Method, Recogniser<'a>>,
+    all: Recogniser<'a>,
 }
 
-pub(crate) struct RouteTarget<'a> {
-    pub(crate) ep: &'a DynEndpoint,
+pub(crate) struct RouteTarget<'a, 'b> {
+    pub(crate) ep: &'a DynEndpoint<'b>,
     pub(crate) params: Params,
 }
 
-impl Router {
+impl<'a> Router<'a> {
     pub(crate) fn new() -> Self {
         Self {
             methods: HashMap::new(),
@@ -31,7 +31,7 @@ impl Router {
         &mut self,
         method: Method,
         path: &str,
-        ep: impl Endpoint + Sync + Send + 'static,
+        ep: impl Endpoint<'a> + Sync + Send + 'a,
     ) {
         self.methods
             .entry(method)
@@ -39,11 +39,11 @@ impl Router {
             .add(path, Box::new(ep))
     }
 
-    pub(crate) fn add_all(&mut self, path: &str, ep: impl Endpoint + Sync + Send + 'static) {
+    pub(crate) fn add_all(&mut self, path: &str, ep: impl Endpoint<'a> + Sync + Send + 'a) {
         self.all.add(path, Box::new(ep))
     }
 
-    pub(crate) fn lookup(&self, method: &Method, path: &str) -> RouteTarget {
+    pub(crate) fn lookup(&self, method: &Method, path: &str) -> RouteTarget<'_, 'a> {
         if let Some(match_) = self
             .methods
             .get(method)
