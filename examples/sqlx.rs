@@ -10,7 +10,12 @@ use tokamak::{
 async fn main() -> Result<()> {
     let mut app = tokamak::new(sqlx::SqlitePool::connect("DATABASE_URL").await?);
 
-    app.at("/dogs").get(delete_todo).ws(todo_ws);
+    app.at("/dogs")
+        .get(delete_todo)
+        .post(delete_todo)
+        .put(delete_todo)
+        .delete(delete_todo)
+        .ws(todo_ws);
 
     app.listen("127.0.0.1").await?;
 

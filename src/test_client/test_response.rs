@@ -1,5 +1,5 @@
 use crate::{Result, StatusCode};
-use hyper::{Body, Response, body::Buf};
+use hyper::{body::Buf, Body, Response};
 use serde::de::DeserializeOwned;
 
 /// The response returned from the test client
@@ -7,14 +7,12 @@ use serde::de::DeserializeOwned;
 /// but more helper methods will be added over time to reduce the need for touching
 /// the raw hyper types.
 pub struct TestResponse {
-    inner: hyper::Response<Body>
+    inner: hyper::Response<Body>,
 }
 
 impl From<hyper::Response<Body>> for TestResponse {
     fn from(resp: Response<Body>) -> Self {
-        Self {
-            inner: resp
-        }
+        Self { inner: resp }
     }
 }
 

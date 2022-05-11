@@ -1,10 +1,10 @@
-use std::sync::Arc;
-use headers::{Header, HeaderMapExt};
 use crate::Result;
-use hyper::{Body, HeaderMap, http};
-use hyper::header::{HeaderName, HeaderValue};
-use serde::Serialize;
 use crate::{App, State};
+use headers::{Header, HeaderMapExt};
+use hyper::header::{HeaderName, HeaderValue};
+use hyper::{http, Body, HeaderMap};
+use serde::Serialize;
+use std::sync::Arc;
 //use crate::test_client::into_body::IntoBody;
 use crate::test_client::test_response::TestResponse;
 
@@ -26,18 +26,14 @@ impl<S: State> TestRequest<S> {
     pub(crate) fn new(app: Arc<App<S>>, builder: http::request::Builder) -> Self {
         Self {
             app,
-            req: PartialReq::Builder(builder)
+            req: PartialReq::Builder(builder),
         }
     }
 
     fn headers_mut(&mut self) -> &mut HeaderMap {
         match &mut self.req {
-            PartialReq::Builder(b) => {
-                b.headers_mut().expect("error getting headers")
-            }
-            PartialReq::Request(req) => {
-                req.headers_mut()
-            }
+            PartialReq::Builder(b) => b.headers_mut().expect("error getting headers"),
+            PartialReq::Request(req) => req.headers_mut(),
         }
     }
 
@@ -49,11 +45,11 @@ impl<S: State> TestRequest<S> {
 
     /// Set a raw header (from the `http` crate)
     pub fn raw_header<N, K>(mut self, name: N, key: K) -> Result<Self>
-        where
-            N: TryInto<HeaderName>,
-            K: TryInto<HeaderValue>,
-            <N as TryInto<HeaderName>>::Error: Into<anyhow::Error>,
-            <K as TryInto<HeaderValue>>::Error: Into<anyhow::Error>,
+    where
+        N: TryInto<HeaderName>,
+        K: TryInto<HeaderValue>,
+        <N as TryInto<HeaderName>>::Error: Into<anyhow::Error>,
+        <K as TryInto<HeaderValue>>::Error: Into<anyhow::Error>,
     {
         self.headers_mut().insert(name.try_into()?, key.try_into()?);
         Ok(self)
