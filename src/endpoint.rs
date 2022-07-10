@@ -39,62 +39,63 @@ pub enum EndPointReturn<'a> {
     Future(Pin<Box<dyn Future<Output = ResponseResult> + 'a>>),
 }
 
+/*
+I'm sorry ferris, but while these traits are UGLY they do work beautifully
+*/
+
 pub struct Stateless;
-impl<'a, F, Fut, S> EndPoint<'a, Stateless, S> for F
+impl<'a, F, Fut, S, O> EndPoint<'a, Stateless, S> for F
 where
     F: Fn(Request) -> Fut + 'static,
-    Fut: Future<Output = ResponseResult> + 'a,
+    Fut: Future<Output = TokamakResult<O>> + 'a,
+    O: Into<Response>,
 {
     fn call(&self, req: Request, _: &'a S) -> EndPointReturn<'a> {
+        todo!()
         // try to poll the future once
         // todo if the future is ready, pack it into an immediate response
 
-        EndPointReturn::Future(Box::pin((*self)(req)))
+        // EndPointReturn::Future(Box::pin((*self)(req)))
     }
 }
 
 pub struct Stateful;
-impl<'a, F, Fut, S> EndPoint<'a, Stateful, S> for F
+impl<'a, F, Fut, S, O> EndPoint<'a, Stateful, S> for F
 where
     F: Fn(Request, &'a S) -> Fut + 'static,
-    Fut: Future<Output = ResponseResult> + 'a,
+    Fut: Future<Output = TokamakResult<O>> + 'a,
     S: 'static,
     Fut: 'a,
-{
-    fn call(&self, req: Request, state: &'a S) -> EndPointReturn<'a> {
-        EndPointReturn::Future(Box::pin((*self)(req, state)))
-    }
-}
-
-pub struct StatefulString;
-impl<'a, F, S> EndPoint<'a, StatefulString, S> for F
-where
-    F: Fn(Request) -> TokamakResult<String> + 'static,
-    S: 'static,
+    O: Into<Response>,
 {
     fn call(&self, req: Request, state: &'a S) -> EndPointReturn<'a> {
         todo!()
+
         // EndPointReturn::Future(Box::pin((*self)(req, state)))
     }
 }
 
 pub struct StatefulImmediate;
-impl<'a, F, S> EndPoint<'a, StatefulImmediate, S> for F
+impl<'a, F, S, O> EndPoint<'a, StatefulImmediate, S> for F
 where
-    F: Fn(Request, &'a S) -> ResponseResult + 'static,
+    F: Fn(Request, &'a S) -> TokamakResult<O> + 'static,
     S: 'static,
+    O: Into<Response>,
 {
     fn call(&self, req: Request, state: &'a S) -> EndPointReturn<'a> {
-        EndPointReturn::Immediate((*self)(req, state))
+        todo!()
+        // EndPointReturn::Immediate((*self)(req, state))
     }
 }
 
 pub struct StatelessImmediate;
-impl<'a, F, S> EndPoint<'a, StatelessImmediate, S> for F
+impl<'a, F, S, O> EndPoint<'a, StatelessImmediate, S> for F
 where
-    F: Fn(Request) -> ResponseResult + 'static,
+    F: Fn(Request) -> TokamakResult<O> + 'static,
+    O: Into<Response>,
 {
     fn call(&self, req: Request, _: &'a S) -> EndPointReturn<'a> {
-        EndPointReturn::Immediate((*self)(req))
+        todo!()
+        // EndPointReturn::Immediate((*self)(req))
     }
 }
