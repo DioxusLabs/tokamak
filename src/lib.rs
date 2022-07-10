@@ -20,3 +20,11 @@ pub mod innerlude {
 }
 
 pub use innerlude::{App, Request, Response, ResponseResult, ToResponse};
+
+pub fn new<S: Send + Sync + 'static>(s: S) -> App<S> {
+    App::new(s)
+}
+
+pub fn default() -> App<()> {
+    App::new(())
+}

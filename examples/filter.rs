@@ -9,14 +9,13 @@ async fn main() {
     let mut app = App::default();
 
     app.at("/").any(|req: Request| {
-        let len = req.content_length_max(10)?;
-        req.header::<CacheControl>()?;
+        req.content_length_max(10)?;
         req.header_exact("billy", "bob")?;
 
         match *req.method() {
             Method::GET => "hello world!".to_response(),
             Method::POST => "hello world!".to_response(),
-            _ => Response::new(StatusCode::METHOD_NOT_ALLOWED).ok(),
+            _ => Response::not_allowed(),
         }
     });
 

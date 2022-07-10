@@ -1,4 +1,4 @@
-use crate::ResponseResult;
+use crate::{innerlude::TokamakResult, ResponseResult};
 use cookie::Cookie;
 use http::StatusCode;
 
@@ -8,6 +8,11 @@ impl Response {
     pub fn new(code: StatusCode) -> Self {
         todo!()
     }
+
+    pub fn some_body<T>(body: Option<T>) -> TokamakResult<Self> {
+        todo!()
+    }
+
     pub fn insert_cookie(&mut self, cookie: Cookie<'_>) {
         todo!()
     }
@@ -22,7 +27,15 @@ impl Response {
         todo!()
     }
 
-    pub fn ok(self) -> ResponseResult {
+    pub fn build(self) -> ResponseResult {
+        todo!()
+    }
+
+    pub fn ok() -> ResponseResult {
+        todo!()
+    }
+
+    pub fn not_allowed() -> ResponseResult {
         todo!()
     }
 }

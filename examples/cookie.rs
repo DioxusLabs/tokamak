@@ -6,20 +6,19 @@ use tokamak::{App, Request, Response, ToResponse};
 async fn main() {
     let mut app = App::default();
 
-    app.at("/").get(|req: Request| {
-        format!("hello cookies: {:?}", req.cookie("hello").unwrap()).to_response()
-    });
+    app.at("/")
+        .get(|req: Request| format!("hello cookies: {:?}", req.cookie("hello")?).to_response());
 
     app.at("/set").get(|_| {
         Response::new(StatusCode::OK)
             .with_cookie(Cookie::new("hello", "world"))
-            .ok()
+            .build()
     });
 
     app.at("/remove").get(|_| {
         Response::new(StatusCode::OK)
             .with_remove_cookie(Cookie::named("hello"))
-            .ok()
+            .build()
     });
 
     app.listen("127.0.0.1:8080").await.unwrap();

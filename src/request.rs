@@ -56,6 +56,22 @@ impl Request {
         Ok(t)
     }
 
+    /// Get a route parameter (eg. `:key` or `*key` segments in the URI path)
+    ///
+    /// If the parameter is not present, logs an error and returns a `400 Bad Request` to the client
+    pub fn param(&self, param: &str) -> TokamakResult<&str> {
+        todo!()
+        // self.params.find(param).ok_or_else(|| {
+        //     error!("parameter {} not found", param);
+        //     Error::http(StatusCode::BAD_REQUEST)
+        // })
+    }
+
+    /// Get all route parameters
+    pub fn params(&self) -> &Params {
+        &self.params
+    }
+
     // /// Get a reader to read the request body
     // ///
     // /// (This does buffer the whole body into memory, but not necessarily contiguous memory).
