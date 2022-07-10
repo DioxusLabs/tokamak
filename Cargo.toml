@@ -53,7 +53,7 @@ tokio-native-tls = { version = "0.3", optional = true }
 tokio-rustls = { version = "0.23", optional = true }
 tokio-stream = { version = "0.1", features = ["net"] }
 tokio-tungstenite = "0.16.1"
-tokio-util = { version = "0.6", features = ["io"] }
+tokio-util = { version = "0.7.3", features = ["io", "full"] }
 tracing = "0.1"
 uuid = { version = "0.8.2", features = ["v4"] }
 route-recognizer = "0.3"

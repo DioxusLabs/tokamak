@@ -1,7 +1,7 @@
-use tokamak::{Request, Response, Result};
+use tokamak::{Request, Response, TokamakResult};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> TokamakResult<()> {
     let mut app = tokamak::new(());
 
     app.listen("127.0.0.1").await;

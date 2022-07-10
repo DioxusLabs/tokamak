@@ -1,46 +1,55 @@
-use crate::state::State;
-/// Exposes the `Endpoint` trait if you want to implement it for custom types.
-///
-/// This is not usually necessary since it's implemented for function types already.
-use crate::{Request, Responder, Response, Result};
-use async_trait::async_trait;
-use std::future::Future;
-use std::sync::Arc;
+use crate::innerlude::*;
+use futures_util::Future;
 
-/// Implement `Endpoint` for a type to be used as a method handler.
-///
-/// It is already implemented for functions of `Request` to `Result<Response>`
-/// which is the simplest (and most convenient) kind of handler.
-/// You can implement it manually for endpoints that may require some kind of local state.
-///
-/// `Endpoint` uses the `#[async_trait]` attribute hence the signature presented in the docs here
-/// has been modified. An example of implementing using the attribute:
-/// ```rust
-/// # use highnoon::{Endpoint, State, Result, Request, Response};
-/// struct NoOpEndpoint;
-///
-/// #[async_trait::async_trait]
-/// impl<S: State> Endpoint<S> for NoOpEndpoint
-/// {
-///     async fn call(&self, state: Arc<S>, req: Request) -> Result<Response> {
-///         Ok(Response::ok())
-///     }
-/// }
-/// ```
-#[async_trait]
-pub trait Endpoint<S: State> {
-    async fn call(&self, state: Arc<S>, req: Request) -> Result<Response>;
+pub trait EndPoint<'a, S, A>: 'static {
+    fn call(&self, req: Request, state: &'a A) -> Box<dyn Future<Output = TokamakResult> + 'a> {
+        todo!()
+    }
 }
 
-#[async_trait]
-impl<S, F, Fut, R> Endpoint<S> for F
+pub struct Stateless;
+impl<'a, F, Fut, S> EndPoint<'a, Stateless, S> for F
 where
-    F: Send + Sync + 'static + Fn(Arc<S>, Request) -> Fut,
-    Fut: Future<Output = R> + Send + 'static,
-    R: Responder + 'static,
-    S: State,
+    F: Fn(Request) -> Fut + 'static,
+    Fut: Future<Output = TokamakResult> + 'a,
 {
-    async fn call(&self, state: Arc<S>, req: Request) -> Result<Response> {
-        (self)(state, req).await.into_response()
+    fn call(&self, req: Request, _: &'a S) -> Box<dyn Future<Output = TokamakResult> + 'a> {
+        Box::new((*self)(req))
+    }
+}
+
+pub struct Stateful;
+impl<'a, F, Fut, S> EndPoint<'a, Stateful, S> for F
+where
+    F: Fn(Request, &'a S) -> Fut + 'static,
+    Fut: Future<Output = TokamakResult> + 'a,
+    S: 'static,
+    Fut: 'a,
+{
+    fn call(&self, req: Request, state: &'a S) -> Box<dyn Future<Output = TokamakResult> + 'a> {
+        Box::new((*self)(req, state))
+    }
+}
+
+pub struct StatefulImmediate;
+impl<'a, F, S> EndPoint<'a, StatefulImmediate, S> for F
+where
+    F: Fn(Request, &'a S) -> TokamakResult + 'static,
+    S: 'static,
+{
+    fn call(&self, req: Request, state: &'a S) -> Box<dyn Future<Output = TokamakResult> + 'a> {
+        let fut = futures_util::future::ready((*self)(req, state));
+        Box::new(fut)
+    }
+}
+
+pub struct StatelessImmediate;
+impl<'a, F, S> EndPoint<'a, StatelessImmediate, S> for F
+where
+    F: Fn(Request) -> TokamakResult + 'static,
+{
+    fn call(&self, req: Request, _: &'a S) -> Box<dyn Future<Output = TokamakResult> + 'a> {
+        let fut = futures_util::future::ready((*self)(req));
+        Box::new(fut)
     }
 }
