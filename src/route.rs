@@ -18,7 +18,7 @@ impl<'a, T: Send + Sync> Route<'a, T> {
         self
     }
 
-    pub fn any<'b, F>(&mut self, t: impl EndPoint<'a, F, T>) {
+    pub fn any<'b, F>(&mut self, t: impl EndPoint<'a, F, T>) -> &mut Self {
         todo!()
     }
 

@@ -3,7 +3,7 @@ use tokamak::{Request, ResponseResult, ToResponse};
 
 #[tokio::main]
 async fn main() {
-    let mut app = tokamak::App::new(sqlx::SqlitePool::connect("DATABASE_URL").await.unwrap());
+    let mut app = tokamak::new(sqlx::SqlitePool::connect("DATABASE_URL").await.unwrap());
 
     app.at("/dogs").get(fetch_dogs);
 

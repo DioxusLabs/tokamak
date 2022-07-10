@@ -28,13 +28,15 @@ impl<State> TrueEndpoint<State> {
 }
 
 pub trait EndPoint<'a, Sig, State>: 'static {
-    fn call(
-        &self,
-        req: Request,
-        state: &'a State,
-    ) -> Pin<Box<dyn Future<Output = ResponseResult> + 'a>> {
+    fn call(&self, req: Request, state: &'a State) -> EndPointReturn<'a> {
         todo!()
     }
+}
+
+pub enum EndPointReturn<'a> {
+    // Why box and pin a future if we don't need to?
+    Immediate(ResponseResult),
+    Future(Pin<Box<dyn Future<Output = ResponseResult> + 'a>>),
 }
 
 pub struct Stateless;
@@ -43,8 +45,11 @@ where
     F: Fn(Request) -> Fut + 'static,
     Fut: Future<Output = ResponseResult> + 'a,
 {
-    fn call(&self, req: Request, _: &'a S) -> Pin<Box<dyn Future<Output = ResponseResult> + 'a>> {
-        Box::pin((*self)(req))
+    fn call(&self, req: Request, _: &'a S) -> EndPointReturn<'a> {
+        // try to poll the future once
+        // todo if the future is ready, pack it into an immediate response
+
+        EndPointReturn::Future(Box::pin((*self)(req)))
     }
 }
 
@@ -56,12 +61,20 @@ where
     S: 'static,
     Fut: 'a,
 {
-    fn call(
-        &self,
-        req: Request,
-        state: &'a S,
-    ) -> Pin<Box<dyn Future<Output = ResponseResult> + 'a>> {
-        Box::pin((*self)(req, state))
+    fn call(&self, req: Request, state: &'a S) -> EndPointReturn<'a> {
+        EndPointReturn::Future(Box::pin((*self)(req, state)))
+    }
+}
+
+pub struct StatefulString;
+impl<'a, F, S> EndPoint<'a, StatefulString, S> for F
+where
+    F: Fn(Request) -> TokamakResult<String> + 'static,
+    S: 'static,
+{
+    fn call(&self, req: Request, state: &'a S) -> EndPointReturn<'a> {
+        todo!()
+        // EndPointReturn::Future(Box::pin((*self)(req, state)))
     }
 }
 
@@ -71,13 +84,8 @@ where
     F: Fn(Request, &'a S) -> ResponseResult + 'static,
     S: 'static,
 {
-    fn call(
-        &self,
-        req: Request,
-        state: &'a S,
-    ) -> Pin<Box<dyn Future<Output = ResponseResult> + 'a>> {
-        let fut = futures_util::future::ready((*self)(req, state));
-        Box::pin(fut)
+    fn call(&self, req: Request, state: &'a S) -> EndPointReturn<'a> {
+        EndPointReturn::Immediate((*self)(req, state))
     }
 }
 
@@ -86,8 +94,7 @@ impl<'a, F, S> EndPoint<'a, StatelessImmediate, S> for F
 where
     F: Fn(Request) -> ResponseResult + 'static,
 {
-    fn call(&self, req: Request, _: &'a S) -> Pin<Box<dyn Future<Output = ResponseResult> + 'a>> {
-        let fut = futures_util::future::ready((*self)(req));
-        Box::pin(fut)
+    fn call(&self, req: Request, _: &'a S) -> EndPointReturn<'a> {
+        EndPointReturn::Immediate((*self)(req))
     }
 }

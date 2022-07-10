@@ -1,16 +1,34 @@
 use std::rc::Rc;
 
+use cookie::Cookie;
 use headers::{CacheControl, ContentLength};
 use http::{Method, StatusCode};
 use tokamak::*;
+
+#[derive(serde::Deserialize)]
+struct Dog {
+    name: String,
+}
 
 #[tokio::main]
 async fn main() {
     let mut app = App::default();
 
-    app.at("/").any(|req: Request| {
+    app.at("/")
+        .filter(|req: Request| {
+            req.content_length_max(10).unwrap();
+            true
+        })
+        .get(|_| "get world!".to_response());
+
+    app.at("/").any(|mut req: Request| async move {
         req.content_length_max(10)?;
         req.header_exact("billy", "bob")?;
+        let dog = req.body_json::<Dog>().await?;
+        // req.cookie_matches(Cookie::named("auth"), "auth-token")?;
+        // req.content_length_max(10)?;
+        // req.header_exact("billy", "bob")?;
+        // req.cookie_matches(Cookie::named("auth"), "auth-token")?;
 
         match *req.method() {
             Method::GET => "hello world!".to_response(),

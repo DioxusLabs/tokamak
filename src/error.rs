@@ -1,7 +1,7 @@
 use http::StatusCode;
 
 use crate::innerlude::*;
-use std::error::Error as StdError;
+use std::{error::Error as StdError, fmt::Debug};
 
 pub type ResponseResult = core::result::Result<Response, TokamakError>;
 pub type TokamakResult<T> = core::result::Result<T, TokamakError>;
@@ -22,6 +22,12 @@ pub enum TokamakError {
 
     /// Internal errors, reported as 500 Internal Server Error and logged locally
     Internal(anyhow::Error),
+}
+
+impl Debug for TokamakError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
 }
 
 impl TokamakError {

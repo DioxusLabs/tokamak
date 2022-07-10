@@ -9,6 +9,7 @@ mod route;
 mod router;
 
 pub mod innerlude {
+    pub use super::AppState;
     pub use crate::app::*;
     pub use crate::endpoint::*;
     pub use crate::error::*;
@@ -21,7 +22,10 @@ pub mod innerlude {
 
 pub use innerlude::{App, Request, Response, ResponseResult, ToResponse};
 
-pub fn new<S: Send + Sync + 'static>(s: S) -> App<S> {
+pub trait AppState: Send + Sync + 'static {}
+impl<T> AppState for T where T: Send + Sync + 'static {}
+
+pub fn new<S: AppState>(s: S) -> App<S> {
     App::new(s)
 }
 

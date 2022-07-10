@@ -12,7 +12,7 @@ use tokio_util::task::LocalPoolHandle;
 
 use crate::innerlude::*;
 
-pub struct App<T: Send + Sync + 'static = ()> {
+pub struct App<T: AppState = ()> {
     pub state: Arc<T>,
     pub routes: Router<T>,
 }
@@ -23,7 +23,7 @@ impl Default for App<()> {
     }
 }
 
-impl<T: Send + Sync + 'static> App<T> {
+impl<T: AppState> App<T> {
     pub fn new(state: T) -> Self {
         Self {
             state: Arc::new(state),
@@ -43,7 +43,7 @@ impl<T: Send + Sync + 'static> App<T> {
         todo!()
     }
 
-    pub fn filter(&mut self, f: impl Fn(Request) -> bool) {
+    pub fn filter(&mut self, f: impl Fn(Request) -> bool) -> &mut Self {
         todo!()
     }
 
