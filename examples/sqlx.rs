@@ -21,7 +21,7 @@ async fn handler(cx: Request<State, Context,>) {
 */
 
 #[tokio::main]
-async fn main() -> tokamak::TokamakResult<()> {
+async fn main() -> tokamak::ResponseResult<()> {
     let mut app = tokamak::new(sqlx::SqlitePool::connect("DATABASE_URL").await?);
 
     // app.at("/dogs").get(get_todo);

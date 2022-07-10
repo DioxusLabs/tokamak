@@ -1,7 +1,10 @@
+use http::StatusCode;
+
 use crate::innerlude::*;
 use std::error::Error as StdError;
 
-pub type TokamakResult = core::result::Result<Response, TokamakError>;
+pub type ResponseResult = core::result::Result<Response, TokamakError>;
+pub type TokamakResult<T> = core::result::Result<T, TokamakError>;
 
 /// Error type expected to be returned by endpoints.
 ///
@@ -30,19 +33,24 @@ impl TokamakError {
         }
     }
 
-    // /// Create an Error from a `Responder` - the `Responder` will be converted to a response
-    // /// and returned to the HTTP Client exactly the same way as an `Result::Ok` would be.
-    // /// This is useful in conjunction with the `?` operator for early returns.
-    // pub fn http(resp: impl Responder) -> Self {
-    //     match resp.into_response() {
-    //         Ok(r) => Self::Http(r),
-    //         Err(e) => e,
-    //     }
-    // }
+    /// Create an Error from a `Responder` - the `Responder` will be converted to a response
+    /// and returned to the HTTP Client exactly the same way as an `Result::Ok` would be.
+    /// This is useful in conjunction with the `?` operator for early returns.
+    pub fn http(resp: impl Responder) -> Self {
+        todo!()
+        // match resp.into_response() {
+        //     Ok(r) => Self::Http(r),
+        //     Err(e) => e,
+        // }
+    }
 
-    // /// Create a 400 Bad Request Error from a `Responder` - this method is similar to [Error::http]
-    // /// but it also sets the status code
-    // pub fn bad_request(resp: impl Responder) -> Self {
-    //     Self::http((StatusCode::BAD_REQUEST, resp))
-    // }
+    /// Create a 400 Bad Request Error from a `Responder` - this method is similar to [Error::http]
+    /// but it also sets the status code
+    pub fn bad_request(resp: String) -> Self {
+        todo!()
+        // pub fn bad_request(resp: impl Responder) -> Self {
+        // Self::http((StatusCode::BAD_REQUEST, resp))
+    }
 }
+
+pub trait Responder {}

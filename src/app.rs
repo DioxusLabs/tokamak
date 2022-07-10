@@ -8,17 +8,18 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::ToSocketAddrs;
+use tokio_util::task::LocalPoolHandle;
 
 use crate::innerlude::*;
 
-pub struct App<T: Send + Sync = ()> {
+pub struct App<T: Send + Sync + 'static = ()> {
     pub state: Arc<T>,
+    pub routes: Router<T>,
 }
+
 impl Default for App<()> {
     fn default() -> Self {
-        Self {
-            state: Arc::new(()),
-        }
+        Self::new(())
     }
 }
 
@@ -26,6 +27,7 @@ impl<T: Send + Sync + 'static> App<T> {
     pub fn new(state: T) -> Self {
         Self {
             state: Arc::new(state),
+            routes: Router::new(),
         }
     }
 
@@ -34,6 +36,10 @@ impl<T: Send + Sync + 'static> App<T> {
     }
 
     pub fn get<'a, F>(&mut self, t: impl EndPoint<'a, F, T>) {
+        todo!()
+    }
+
+    pub fn all<'a, F>(&mut self, t: impl EndPoint<'a, F, T>) {
         todo!()
     }
 
@@ -66,12 +72,14 @@ impl<T: Send + Sync + 'static> App<T> {
         let make_svc = make_service_fn(|addr_stream: &AddrStream| {
             let app = app.clone();
             let addr = addr_stream.remote_addr();
+            let handle = LocalPoolHandle::new(10);
 
             async move {
                 Ok::<_, Infallible>(service_fn(move |req: hyper::Request<Body>| {
                     let app = app.clone();
+                    let pool = handle.clone();
                     async move {
-                        App::serve_one_req(app, req, addr)
+                        App::serve_one_req(pool, app, req, addr)
                             .await
                             .map_err(|err| err.into_std())
                     }
@@ -86,23 +94,35 @@ impl<T: Send + Sync + 'static> App<T> {
     }
 
     pub(crate) async fn serve_one_req(
+        pool: LocalPoolHandle,
         app: Arc<App<T>>,
         req: hyper::Request<Body>,
         addr: SocketAddr,
     ) -> Result<hyper::Response<Body>, TokamakError> {
-        todo!()
-        // let RouteTarget { ep, params } = app.routes.lookup(req.method(), req.uri().path());
+        let res = pool
+            .spawn_pinned(|| {
+                //
+                async {
+                    hyper::Response::new(Body::empty())
+                    // let RouteTarget { ep, params } =
+                    //     app.routes.lookup(req.method(), req.uri().path());
 
-        // let req = Request::new(req, params, addr);
+                    // let req = Request::new(req, params, addr);
 
-        // let next = Next {
-        //     ep,
-        //     rest: &*app.filters,
-        // };
+                    // let next = Next {
+                    //     ep,
+                    //     rest: &*app.filters,
+                    // };
 
-        // next.next(app.state.clone(), req)
-        //     .await
-        //     .or_else(|err| err.into_response())
-        //     .map(|resp| resp.into_inner())
+                    // next.next(app.state.clone(), req)
+                    //     .await
+                    //     .or_else(|err| err.into_response())
+                    //     .map(|resp| resp.into_inner())
+                }
+            })
+            .await
+            .unwrap();
+
+        Ok(res)
     }
 }

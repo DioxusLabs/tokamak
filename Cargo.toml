@@ -59,6 +59,8 @@ uuid = { version = "0.8.2", features = ["v4"] }
 route-recognizer = "0.3"
 serde_urlencoded = "0.7"
 time = "0.3.7"
+futures-lite = "1.12.0"
+routefinder = "0.5.2"
 
 [features]
 default = []

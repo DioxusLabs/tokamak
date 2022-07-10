@@ -1,4 +1,4 @@
-use crate::TokamakResult;
+use crate::ResponseResult;
 use cookie::Cookie;
 use http::StatusCode;
 
@@ -22,12 +22,12 @@ impl Response {
         todo!()
     }
 
-    pub fn ok(self) -> TokamakResult {
+    pub fn ok(self) -> ResponseResult {
         todo!()
     }
 }
 
-impl From<Response> for crate::TokamakResult {
+impl From<Response> for crate::ResponseResult {
     fn from(response: Response) -> Self {
         todo!()
     }
@@ -88,17 +88,17 @@ impl<'a> From<&'a str> for Response {
 }
 
 pub trait ToResponse {
-    fn to_response(self) -> crate::TokamakResult;
+    fn to_response(self) -> crate::ResponseResult;
 }
 
 impl ToResponse for String {
-    fn to_response(self) -> crate::TokamakResult {
+    fn to_response(self) -> crate::ResponseResult {
         todo!()
     }
 }
 
 impl ToResponse for &str {
-    fn to_response(self) -> crate::TokamakResult {
+    fn to_response(self) -> crate::ResponseResult {
         todo!()
     }
 }

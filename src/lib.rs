@@ -2,9 +2,11 @@ mod app;
 mod endpoint;
 mod error;
 mod filter;
+pub mod filters;
 mod request;
 mod response;
 mod route;
+mod router;
 
 pub mod innerlude {
     pub use crate::app::*;
@@ -14,6 +16,7 @@ pub mod innerlude {
     pub use crate::request::*;
     pub use crate::response::*;
     pub use crate::route::*;
+    pub use crate::router::*;
 }
 
-pub use innerlude::{App, Request, Response, ToResponse, TokamakResult};
+pub use innerlude::{App, Request, Response, ResponseResult, ToResponse};
