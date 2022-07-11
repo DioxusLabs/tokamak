@@ -28,7 +28,7 @@ impl<State> TrueEndpoint<State> {
 }
 
 pub trait EndPoint<'a, Sig, State>: 'static {
-    fn call(&self, req: Request, state: &'a State) -> EndPointReturn<'a> {
+    fn call(&self, req: &'a mut Request, state: &'a State) -> EndPointReturn<'a> {
         todo!()
     }
 }
@@ -36,6 +36,8 @@ pub trait EndPoint<'a, Sig, State>: 'static {
 pub enum EndPointReturn<'a> {
     // Why box and pin a future if we don't need to?
     Immediate(ResponseResult),
+
+    //
     Future(Pin<Box<dyn Future<Output = ResponseResult> + 'a>>),
 }
 
@@ -50,7 +52,7 @@ where
     Fut: Future<Output = TokamakResult<O>> + 'a,
     O: Into<Response>,
 {
-    fn call(&self, req: Request, _: &'a S) -> EndPointReturn<'a> {
+    fn call(&self, req: &'a mut Request, _: &'a S) -> EndPointReturn<'a> {
         todo!()
         // try to poll the future once
         // todo if the future is ready, pack it into an immediate response
@@ -68,7 +70,7 @@ where
     Fut: 'a,
     O: Into<Response>,
 {
-    fn call(&self, req: Request, state: &'a S) -> EndPointReturn<'a> {
+    fn call(&self, req: &'a mut Request, state: &'a S) -> EndPointReturn<'a> {
         todo!()
 
         // EndPointReturn::Future(Box::pin((*self)(req, state)))
@@ -82,7 +84,7 @@ where
     S: 'static,
     O: Into<Response>,
 {
-    fn call(&self, req: Request, state: &'a S) -> EndPointReturn<'a> {
+    fn call(&self, req: &'a mut Request, state: &'a S) -> EndPointReturn<'a> {
         todo!()
         // EndPointReturn::Immediate((*self)(req, state))
     }
@@ -94,7 +96,7 @@ where
     F: Fn(Request) -> TokamakResult<O> + 'static,
     O: Into<Response>,
 {
-    fn call(&self, req: Request, _: &'a S) -> EndPointReturn<'a> {
+    fn call(&self, req: &'a mut Request, _: &'a S) -> EndPointReturn<'a> {
         todo!()
         // EndPointReturn::Immediate((*self)(req))
     }

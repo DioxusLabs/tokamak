@@ -4,10 +4,8 @@ use tokamak::{Request, Response};
 async fn main() {
     let mut app = tokamak::default();
 
-    app.at("/").get(|_| Ok("".to_string()));
-
+    app.at("/").get(|_| Ok(""));
     app.at("/user").post(|_| Response::ok());
-
     app.at("/user/:id")
         .get(|req: Request| Ok(req.param("id")?.to_string()));
 

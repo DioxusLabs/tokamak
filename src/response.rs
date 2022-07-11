@@ -9,6 +9,10 @@ impl Response {
         todo!()
     }
 
+    pub fn redirect(to: &str) -> TokamakResult<Self> {
+        todo!()
+    }
+
     pub fn some_body<T>(body: Option<T>) -> TokamakResult<Self> {
         todo!()
     }

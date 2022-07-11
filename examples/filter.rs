@@ -5,6 +5,8 @@ use headers::{CacheControl, ContentLength};
 use http::{Method, StatusCode};
 use tokamak::*;
 
+pub type RequestMut<'a> = &'a mut Request;
+
 #[derive(serde::Deserialize)]
 struct Dog {
     name: String,
@@ -21,14 +23,22 @@ async fn main() {
         })
         .get(|_| "get world!".to_response());
 
+    // Try to handle as admin
+    app.at("/posts").get(|req: Request| async move {
+        req.header_exact("admin", "bob")?;
+        Ok("get world!")
+    });
+
+    // Fallback to regular user
+    app.at("/posts").get(|req: Request| async move {
+        req.header_exact("admin", "bob")?;
+        Ok("get world!")
+    });
+
     app.at("/").any(|mut req: Request| async move {
         req.content_length_max(10)?;
         req.header_exact("billy", "bob")?;
-        let dog = req.body_json::<Dog>().await?;
-        // req.cookie_matches(Cookie::named("auth"), "auth-token")?;
-        // req.content_length_max(10)?;
-        // req.header_exact("billy", "bob")?;
-        // req.cookie_matches(Cookie::named("auth"), "auth-token")?;
+        req.body_json::<Dog>().await?;
 
         match *req.method() {
             Method::GET => "hello world!".to_response(),
@@ -58,3 +68,39 @@ fn content_length_filter(size: u64) -> impl Fn(Request) -> bool {
             .unwrap_or(false)
     }
 }
+
+fn my_app() {
+    let mut app = tokamak::default();
+
+    // app.filter(ddos_protection());
+
+    app.at("/admin")
+        .filter(content_length_filter(10))
+        .with(|req, state, res| {})
+        .get(|req, state| Ok("asd"))
+        .get(|req, state| Ok("asd"))
+        .get(|_| Response::redirect("/login"));
+
+    app.at("/login").get(|_| Ok(r#"some template"#));
+}
+
+// extractors are common to all endpoints
+// They force all end points to have the same signature
+
+fn admin_panel(req: RequestMut) -> Response {
+    let admin = req.authorize()?;
+    Ok(todo!())
+}
+
+struct Admin {}
+struct User {}
+
+mod wacky_shit {
+
+    // // at max, 10 extractions
+    // trait EndPoint2<A, B, C, D, E, F, G, H, I> {}
+
+    // impl EndPoint2<A, B, C, D, E, F, G, H, I> for Fn() {}
+}
+
+// methods are spread out in your codebase
