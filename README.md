@@ -15,6 +15,7 @@ Tokamak is a simple web-framework for Rust/Tokio focused on maximum developer pr
 - Dioxus LiveView for server-rendered apps
 - Progressively rendered static pages
 - Prebuilt admin panel and logging
+- Hyper and Tower integrations (like Axum)
 
 Tokamak combines the batteries-included philosophy of django with the composability of express. Bring your own parts, or compose our prebuilt components to fit your app.
 
