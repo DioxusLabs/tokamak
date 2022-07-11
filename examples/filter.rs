@@ -69,38 +69,3 @@ fn content_length_filter(size: u64) -> impl Fn(Request) -> bool {
     }
 }
 
-fn my_app() {
-    let mut app = tokamak::default();
-
-    // app.filter(ddos_protection());
-
-    app.at("/admin")
-        .filter(content_length_filter(10))
-        .with(|req, state, res| {})
-        .get(|req, state| Ok("asd"))
-        .get(|req, state| Ok("asd"))
-        .get(|_| Response::redirect("/login"));
-
-    app.at("/login").get(|_| Ok(r#"some template"#));
-}
-
-// extractors are common to all endpoints
-// They force all end points to have the same signature
-
-fn admin_panel(req: RequestMut) -> Response {
-    let admin = req.authorize()?;
-    Ok(todo!())
-}
-
-struct Admin {}
-struct User {}
-
-mod wacky_shit {
-
-    // // at max, 10 extractions
-    // trait EndPoint2<A, B, C, D, E, F, G, H, I> {}
-
-    // impl EndPoint2<A, B, C, D, E, F, G, H, I> for Fn() {}
-}
-
-// methods are spread out in your codebase
