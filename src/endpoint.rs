@@ -35,9 +35,10 @@ pub trait EndPoint<'a, Sig, State>: 'static {
 
 pub enum EndPointReturn<'a> {
     // Why box and pin a future if we don't need to?
+    // Calculates the result immediately without calling into Rust's async machinery
     Immediate(ResponseResult),
 
-    //
+    // Calls into Rust's async machinery to calculate the result
     Future(Pin<Box<dyn Future<Output = ResponseResult> + 'a>>),
 }
 

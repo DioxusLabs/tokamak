@@ -28,7 +28,7 @@ Tokamak is incredibly simple but incredibly flexible.
 async fn main() {
     let mut app = tokamak::new();
 
-    app.at("/").get(|_| Ok("hello world!"));
+    app.at("/").get(|_| "hello world!");
 
     app.listen("0.0.0.0:8080").await;
 }
@@ -41,7 +41,7 @@ In Tokamak, you can easily filter endpoints based on criteria. Tokamak prefers f
 ```rust
  app.at("/")
     .filter(|req| req.header_exact("auth-bearer"))
-    .get(|_| Ok("hello world!"));
+    .get(|_| "hello world!");
 ```
 
 ## Extractors
@@ -50,7 +50,7 @@ Extractors provide a way of guarding an endpoint and returning a value.
 ```rust
  app.at("/")
     .extract(|req, state| state.authorize(req))
-    .get(|req, state, user: Admin| Ok("hello world!"));
+    .get(|req, state, user: Admin| "hello world!");
 ```
 
 In the cases where you need an extraction just for a single handler, it can be easily done from within the handler itself.
@@ -88,7 +88,7 @@ app.with(AuthEngine::new());
 
 app.at("/api")
     .get(|req, state, admin: Admin| Ok("You are an admin!"))
-    .get(|req, state| Ok("You are not an admin"));
+    .get(|_| "You are not an admin");
 ```
 
 ## Middleware
@@ -98,7 +98,7 @@ Again, like filters, extractors, and endpoints, Tokamak's middleware is just ano
 ```rust
 app.at("/")
     .with(|req, state, res| res.insert_header("request-number", format!(state.count_up())))
-    .get(|req, state| Ok("hello world!"));
+    .get(|_| "hello world!");
 ```
 
 Of course, we can refactor out our middleware into dedicated functions
@@ -106,7 +106,7 @@ Of course, we can refactor out our middleware into dedicated functions
 ```rust
 app.at("/")
     .with(counting_middleware)
-    .get(|req| Ok("hello world!"));
+    .get(|_| "hello world!");
 ```
 
 ## Tower Layers
@@ -116,7 +116,7 @@ Because Tokamak uses hyper under the hood, you are also free to add Tower layers
 ```rust
 app.at("/")
     .layer(identity_layer)
-    .get(|req| Ok("hello world!"));
+    .get(|_| "hello world!");
 ```
 
 ## Context
@@ -198,10 +198,10 @@ However, you can tweak an endpoint or Router be completely blocking (allowing sy
 
 ```rust
 // Blocking
-app.blocking_at("app").get(|req, state| block_some_io());
+app.blocking_at("app").get(|_| block_some_io());
 
 // work stealing
-app.work_stealing_at("app").get(|req, state| "asd");
+app.work_stealing_at("app").get(|_| "asd");
 ```
 
 
