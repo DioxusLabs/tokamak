@@ -24,7 +24,7 @@ fn set_key(req: Request, state: &KvStore) -> ResponseResult {
         req.param("key")?.to_string(),
         req.param("value")?.to_string(),
     );
-    Response::ok()
+    Ok(Response::ok())
 }
 
 fn get_keys(_req: Request, state: &KvStore) -> ResponseResult {

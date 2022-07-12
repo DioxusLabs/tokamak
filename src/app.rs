@@ -35,15 +35,15 @@ impl<T: AppState> App<T> {
         Route { app: self, path }
     }
 
-    pub fn get<'a, F>(&mut self, t: impl EndPoint<'a, F, T>) {
+    pub fn get<'a, F>(&mut self, t: impl Endpoint<'a, F, T>) {
         todo!()
     }
 
-    pub fn all<'a, F>(&mut self, t: impl EndPoint<'a, F, T>) {
+    pub fn all<'a, F>(&mut self, t: impl Endpoint<'a, F, T>) {
         todo!()
     }
 
-    pub fn filter(&mut self, f: impl Fn(Request) -> bool) -> &mut Self {
+    pub fn filter(&mut self, f: impl Fn(Request<()>) -> bool) -> &mut Self {
         todo!()
     }
 
@@ -98,7 +98,7 @@ impl<T: AppState> App<T> {
         app: Arc<App<T>>,
         req: hyper::Request<Body>,
         addr: SocketAddr,
-    ) -> Result<hyper::Response<Body>, TokamakError> {
+    ) -> Result<hyper::Response<Body>, Error> {
         let res = pool
             .spawn_pinned(|| {
                 //

@@ -3,8 +3,8 @@ use http::StatusCode;
 use crate::innerlude::*;
 use std::{error::Error as StdError, fmt::Debug};
 
-pub type ResponseResult = core::result::Result<Response, TokamakError>;
-pub type TokamakResult<T> = core::result::Result<T, TokamakError>;
+pub type ResponseResult = core::result::Result<Response, Error>;
+pub type TokamakResult<T> = core::result::Result<T, Error>;
 
 /// Error type expected to be returned by endpoints.
 ///
@@ -16,7 +16,7 @@ pub type TokamakResult<T> = core::result::Result<T, TokamakError>;
 ///
 /// HTTP level error should be created with the `http` methods (which accepts a `Responder` rather than
 /// just `Response`) and Internal errors should be created with the `From`/`Into` implementation.
-pub enum TokamakError {
+pub enum Error {
     /// An error that should get returned to the client
     Http(Response),
 
@@ -24,18 +24,18 @@ pub enum TokamakError {
     Internal(anyhow::Error),
 }
 
-impl Debug for TokamakError {
+impl Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         todo!()
     }
 }
 
-impl TokamakError {
+impl Error {
     /// Convert this error into a boxed std::error::Error
     pub(crate) fn into_std(self) -> Box<dyn StdError + Send + Sync + 'static> {
         match self {
-            TokamakError::Http(_) => panic!("http error??!"),
-            TokamakError::Internal(err) => err.into(),
+            Error::Http(_) => panic!("http error??!"),
+            Error::Internal(err) => err.into(),
         }
     }
 

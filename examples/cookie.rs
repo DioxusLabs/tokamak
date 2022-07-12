@@ -1,25 +1,18 @@
 use cookie::Cookie;
-use http::StatusCode;
-use tokamak::{App, Request, Response, ToResponse};
+use tokamak::{Request, Response};
 
 #[tokio::main]
 async fn main() {
-    let mut app = App::default();
+    let mut app = tokamak::default();
 
     app.at("/")
-        .get(|req: Request| format!("hello cookies: {:?}", req.cookie("hello")?).to_response());
+        .get(|req: Request| req.cookie("hello").map(|f| format!("hello cookies: {f:?}")));
 
-    app.at("/set").get(|_| {
-        Response::new(StatusCode::OK)
-            .with_cookie(Cookie::new("hello", "world"))
-            .build()
-    });
+    app.at("/set")
+        .get(|_| Response::ok().with_cookie(Cookie::new("hello", "world")));
 
-    app.at("/remove").get(|_| {
-        Response::new(StatusCode::OK)
-            .with_remove_cookie(Cookie::named("hello"))
-            .build()
-    });
+    app.at("/remove")
+        .get(|_| Response::ok().with_remove_cookie(Cookie::named("hello")));
 
     app.listen("127.0.0.1:8080").await.unwrap();
 }

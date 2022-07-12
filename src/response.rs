@@ -27,6 +27,7 @@ impl Response {
         todo!()
     }
 
+    /// Modify the response and remove the specified cookie
     pub fn with_remove_cookie(mut self, cookie: Cookie<'_>) -> Self {
         todo!()
     }
@@ -35,7 +36,7 @@ impl Response {
         todo!()
     }
 
-    pub fn ok() -> ResponseResult {
+    pub fn ok() -> Response {
         todo!()
     }
 

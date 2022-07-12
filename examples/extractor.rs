@@ -1,54 +1,36 @@
-use tokamak::{Request, Response};
+use std::marker::PhantomData;
+
+use tokamak::{
+    innerlude::{FromRequest, FromRequestReturn},
+    Request, Response, Result,
+};
 
 fn main() {
-    take_extractor(req1);
-    take_extractor(req2);
-    take_extractor(req3);
-    take_extractor(req4);
+    let mut app = tokamak::default();
+
+    app.at("asd")
+        .get(|_| Response::ok())
+        .get(|req: Request| async move {
+            //
+            Ok(Response::ok())
+        });
 }
 
-fn req1(r: Request) -> Response {
-    todo!()
+async fn my_stuff(req: Request, g: Admin, b: Admin) -> Result {
+    Ok(Response::ok())
 }
 
-fn req2(r: Request, t: Admin) -> Response {
-    todo!()
+struct Admin;
+impl FromRequest for Admin {
+    fn from_request(req: &Request) -> FromRequestReturn<Self> {
+        todo!()
+    }
 }
 
-fn req3(r: Request, t: User) -> Response {
-    todo!()
+async fn combined_request(req: MyRequest) -> Result {
+    Ok(Response::ok())
 }
 
-fn req4(r: Request, t: User, b: Admin) -> Response {
-    todo!()
-}
-
-fn req5(r: Request, t: User, b: Admin, len: MaxContentLength<100>) -> Response {
-    todo!()
-}
-
-struct Admin {}
-impl FromRequest for Admin {}
-
-struct User {}
-impl FromRequest for User {}
-
-struct MaxContentLength<const N: usize>(usize);
-impl<const N: usize> FromRequest for MaxContentLength<N> {}
-
-fn take_extractor<A, B, C, D, E, F, G>(f: impl Endpoint<A, B, C, D, E, F, G>) {}
-
-trait Endpoint<A = (), B = (), C = (), D = (), E = (), F = (), G = ()> {}
-
-impl<F> Endpoint for F where F: Fn(Request) -> Response {}
-
-trait FromRequest {}
-
-impl<F, A: FromRequest> Endpoint<A> for F where F: Fn(Request, A) -> Response {}
-
-impl<F, A: FromRequest, B: FromRequest> Endpoint<A, B> for F where F: Fn(Request, A, B) -> Response {}
-
-impl<F, A: FromRequest, B: FromRequest, C: FromRequest> Endpoint<A, B, C> for F where
-    F: Fn(Request, A, B, C) -> Response
-{
+struct MyRequest<P = ()> {
+    state: std::rc::Rc<P>,
 }

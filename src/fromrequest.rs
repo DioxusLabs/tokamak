@@ -1,22 +1,22 @@
 use crate::{
-    innerlude::{EndPointReturn, TokamakError},
+    innerlude::{Error, GenericReturn},
     Request, Response,
 };
 
-pub trait FromRequest {
-    fn from_request(req: &Request) -> EndPointReturn;
+pub type FromRequestReturn<'a, T> = GenericReturn<'a, crate::Result<T>>;
+
+pub trait FromRequest: Sized {
+    fn from_request(req: &Request) -> FromRequestReturn<Self>;
 }
 
 struct Admin;
 impl FromRequest for Admin {
-    fn from_request(req: &Request) -> EndPointReturn {
-        EndPointReturn::Immediate({
+    fn from_request(req: &Request) -> FromRequestReturn<Self> {
+        GenericReturn::Immediate({
             if req.uri() == "/admin" {
-                Ok("admin".into())
+                Ok(Admin {})
             } else {
-                Err(TokamakError::Http(Response::new(
-                    http::StatusCode::UNAUTHORIZED,
-                )))
+                Err(Error::Http(Response::new(http::StatusCode::UNAUTHORIZED)))
             }
         })
     }
@@ -24,14 +24,12 @@ impl FromRequest for Admin {
 
 struct AdminAsync;
 impl FromRequest for AdminAsync {
-    fn from_request(req: &Request) -> EndPointReturn {
-        EndPointReturn::Future(Box::pin(async move {
+    fn from_request(req: &Request) -> FromRequestReturn<Self> {
+        GenericReturn::Future(Box::pin(async move {
             if req.uri() == "/admin" {
-                Ok("admin".into())
+                Ok(AdminAsync {})
             } else {
-                Err(TokamakError::Http(Response::new(
-                    http::StatusCode::UNAUTHORIZED,
-                )))
+                Err(Error::Http(Response::new(http::StatusCode::UNAUTHORIZED)))
             }
         }))
     }

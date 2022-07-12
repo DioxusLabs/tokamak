@@ -1,19 +1,20 @@
-use std::{io::Read, net::SocketAddr};
+use std::{any::Any, io::Read, net::SocketAddr, rc::Rc};
 
 use headers::{Cookie, Header, HeaderMapExt};
 use hyper::Body;
 use route_recognizer::Params;
 use serde::de::DeserializeOwned;
 
-use crate::{error::TokamakError, innerlude::TokamakResult, ResponseResult};
+use crate::{error::Error, innerlude::TokamakResult, ResponseResult};
 
-pub struct Request {
+pub struct Request<T: 'static + Any = ()> {
     params: Params,
     inner: hyper::Request<Body>,
     remote_addr: SocketAddr,
+    state: Rc<T>,
 }
 
-impl Request {
+impl<State> Request<State> {
     pub fn cookie(&self, name: &str) -> TokamakResult<Cookie> {
         todo!()
     }
@@ -28,7 +29,7 @@ impl Request {
     pub fn check_header<T: Header>(
         &self,
         f: impl FnOnce(&T) -> bool,
-    ) -> core::result::Result<T, TokamakError> {
+    ) -> core::result::Result<T, Error> {
         todo!()
         // self.inner.headers().typed_get()
     }
@@ -46,13 +47,12 @@ impl Request {
     ///
     /// (To get the raw query string access it via `req.uri().query()`).
     /// If there is no query string, deserialize an empty string.
-    pub fn query<T: DeserializeOwned>(&self) -> Result<T, TokamakError> {
+    pub fn query<T: DeserializeOwned>(&self) -> Result<T, Error> {
         // if there is no query string we can default to empty string
         // serde_urlencode will work if T has all optional fields
         let q = self.inner.uri().query().unwrap_or("");
-        let t = serde_urlencoded::from_str::<T>(q).map_err(|err| {
-            TokamakError::bad_request(format!("invalid query parameter: {}", err))
-        })?;
+        let t = serde_urlencoded::from_str::<T>(q)
+            .map_err(|err| Error::bad_request(format!("invalid query parameter: {}", err)))?;
         Ok(t)
     }
 
@@ -112,12 +112,12 @@ impl Request {
 }
 
 /// Some default filters
-impl Request {
-    pub fn content_length_max(&self, max: u64) -> Result<u64, TokamakError> {
+impl<State> Request<State> {
+    pub fn content_length_max(&self, max: u64) -> Result<u64, Error> {
         todo!()
     }
 
-    pub fn header_exact(&self, name: &str, value: &str) -> Result<(), TokamakError> {
+    pub fn header_exact(&self, name: &str, value: &str) -> Result<(), Error> {
         todo!()
     }
 }

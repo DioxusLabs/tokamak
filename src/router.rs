@@ -17,7 +17,7 @@ pub struct Router<State: Send + Sync + 'static> {
 }
 
 /// The result of routing a URL
-pub(crate) struct Selection<'a, State> {
+pub(crate) struct Selection<'a, State: 'static> {
     pub(crate) endpoint: &'a TrueEndpoint<State>,
     pub(crate) params: Captures<'static, 'static>,
 }

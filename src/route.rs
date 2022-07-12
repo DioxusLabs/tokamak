@@ -2,7 +2,7 @@ use std::pin::Pin;
 
 use futures_lite::Future;
 
-use crate::innerlude::*;
+use crate::{fromrequest::FromRequest, innerlude::*};
 
 pub struct Route<'a, T: Send + Sync + 'static = ()> {
     pub path: &'static str,
@@ -10,15 +10,18 @@ pub struct Route<'a, T: Send + Sync + 'static = ()> {
 }
 
 impl<'a, T: Send + Sync> Route<'a, T> {
-    pub fn get<'b, F>(&mut self, t: impl EndPoint<'b, F, T>) -> &mut Self {
+    pub fn get<'b, Sig, E0, E1, E2, E3, E4>(
+        &mut self,
+        t: impl Endpoint<'b, Sig, T, E0, E1, E2, E3, E4>,
+    ) -> &mut Self {
         self
     }
 
-    pub fn post<'b, F>(&mut self, t: impl EndPoint<'b, F, T>) -> &mut Self {
+    pub fn post<'b, F>(&mut self, t: impl Endpoint<'b, F, T>) -> &mut Self {
         self
     }
 
-    pub fn any<'b, F>(&mut self, t: impl EndPoint<'a, F, T>) -> &mut Self {
+    pub fn any<'b, F>(&mut self, t: impl Endpoint<'a, F, T>) -> &mut Self {
         todo!()
     }
 
@@ -26,7 +29,7 @@ impl<'a, T: Send + Sync> Route<'a, T> {
         todo!()
     }
 
-    pub fn extract<S>(&mut self, f: impl Fn(Request) -> Option<S>) -> &mut Self {
+    pub fn extract<S>(&mut self, f: impl Fn(Request) -> crate::Result<S>) -> &mut Self {
         todo!()
     }
 }
