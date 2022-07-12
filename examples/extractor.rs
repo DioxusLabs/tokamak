@@ -23,11 +23,18 @@ fn req4(r: Request, t: User, b: Admin) -> Response {
     todo!()
 }
 
+fn req5(r: Request, t: User, b: Admin, len: MaxContentLength<100>) -> Response {
+    todo!()
+}
+
 struct Admin {}
 impl FromRequest for Admin {}
 
 struct User {}
 impl FromRequest for User {}
+
+struct MaxContentLength<const N: usize>(usize);
+impl<const N: usize> FromRequest for MaxContentLength<N> {}
 
 fn take_extractor<A, B, C, D, E, F, G>(f: impl Endpoint<A, B, C, D, E, F, G>) {}
 
