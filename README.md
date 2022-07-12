@@ -61,22 +61,52 @@ fn admin_panel(req: Request, state: &State) -> Response {
 }
 ```
 
+Both of these strategies are "explicit" extractors. However, some extractors can be made implicit through the FromRequest trait.
+
+```rust
+fn admin_panel(req: Request, state: &State, admin: Admin) -> Response {
+  todo!()
+}
+
+struct Admin {
+  id: Uuid
+}
+
+impl FromRequest for Admin {
+  fn parse(req: Request) -> TokamakResult<Self> {
+    let auth = req.context::<AuthEngine>()?
+    let token = req.cookie("app-auth")?;
+    auth.is_authorized(token)
+  }
+}
+```
+
+They then can be easily composed in your app as a quick fallback strategy:
+
+```rust
+app.with(AuthEngine::new());
+
+app.at("/api")
+    .get(|req, state, admin: Admin| Ok("You are an admin!"))
+    .get(|req, state| Ok("You are not an admin"));
+```
+
 ## Middleware
 
 Again, like filters, extractors, and endpoints, Tokamak's middleware is just another function. No traits!
 
 ```rust
-  app.at("/")
-      .with(|req, state, res| res.insert_header("request-number", format!(state.count_up())))
-      .get(|req, state| Ok("hello world!"));
+app.at("/")
+    .with(|req, state, res| res.insert_header("request-number", format!(state.count_up())))
+    .get(|req, state| Ok("hello world!"));
 ```
 
 Of course, we can refactor out our middleware into dedicated functions
 
 ```rust
-  app.at("/")
-      .with(counting_middleware)
-      .get(|req| Ok("hello world!"));
+app.at("/")
+    .with(counting_middleware)
+    .get(|req| Ok("hello world!"));
 ```
 
 ## Tower Layers
@@ -84,9 +114,9 @@ Of course, we can refactor out our middleware into dedicated functions
 Because Tokamak uses hyper under the hood, you are also free to add Tower layers into your app:
 
 ```rust
-  app.at("/")
-      .layer(identity_layer)
-      .get(|req| Ok("hello world!"));
+app.at("/")
+    .layer(identity_layer)
+    .get(|req| Ok("hello world!"));
 ```
 
 ## Context

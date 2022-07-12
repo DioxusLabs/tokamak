@@ -20,6 +20,7 @@ pub mod innerlude {
     pub use crate::router::*;
 }
 
+pub use http::StatusCode;
 pub use innerlude::{App, Request, Response, ResponseResult, ToResponse};
 
 pub trait AppState: Send + Sync + 'static {}

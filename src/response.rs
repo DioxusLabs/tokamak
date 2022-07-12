@@ -97,6 +97,20 @@ impl From<String> for Response {
     }
 }
 
+impl From<(http::StatusCode, String)> for Response {
+    fn from(a: (http::StatusCode, String)) -> Self {
+        todo!()
+        // Body::from_string(s).into()
+    }
+}
+
+impl From<(http::StatusCode, &str)> for Response {
+    fn from(a: (http::StatusCode, &str)) -> Self {
+        todo!()
+        // Body::from_string(s).into()
+    }
+}
+
 impl<'a> From<&'a str> for Response {
     fn from(s: &'a str) -> Self {
         todo!()

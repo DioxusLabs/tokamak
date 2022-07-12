@@ -61,6 +61,21 @@ where
     }
 }
 
+pub struct StatelessBare;
+impl<'a, F, S, O> EndPoint<'a, StatelessBare, S> for F
+where
+    F: Fn(Request) -> O + 'static,
+    O: Into<Response>,
+{
+    fn call(&self, req: &'a mut Request, _: &'a S) -> EndPointReturn<'a> {
+        todo!()
+        // try to poll the future once
+        // todo if the future is ready, pack it into an immediate response
+
+        // EndPointReturn::Future(Box::pin((*self)(req)))
+    }
+}
+
 pub struct Stateful;
 impl<'a, F, Fut, S, O> EndPoint<'a, Stateful, S> for F
 where
